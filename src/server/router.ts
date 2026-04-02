@@ -18,8 +18,9 @@ router.post("/api/draw", (req, res) => {
   res.json({ ok: true, commands: payload.commands.length });
 });
 
-router.post("/api/clear", (_req, res) => {
-  broadcastClear();
+router.post("/api/clear", (req, res) => {
+  const layer = req.query.layer as string | undefined;
+  broadcastClear(layer);
   res.json({ ok: true });
 });
 

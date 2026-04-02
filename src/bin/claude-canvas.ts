@@ -67,7 +67,8 @@ program
   .command("draw")
   .description("Send draw commands to the canvas")
   .argument("<json>", "DrawPayload JSON string or - to read from stdin")
-  .action(async (json: string) => {
+  .option("--no-animate", "Render shapes instantly without animation")
+  .action(async (json: string, opts: { animate: boolean }) => {
     const session = requireSession();
     let body: string;
     if (json === "-") {
@@ -75,13 +76,15 @@ program
     } else {
       body = json;
     }
-    // Validate JSON
-    let payload: unknown;
+    let payload: Record<string, unknown>;
     try {
-      payload = JSON.parse(body);
+      payload = JSON.parse(body) as Record<string, unknown>;
     } catch {
       console.error("Invalid JSON");
       process.exit(1);
+    }
+    if (!opts.animate) {
+      payload.animate = false;
     }
     const res = await httpPost(`http://127.0.0.1:${session.port}/api/draw`, payload);
     console.log(JSON.stringify(res));
@@ -91,9 +94,13 @@ program
 program
   .command("clear")
   .description("Clear the canvas")
-  .action(async () => {
+  .option("-l, --layer <layer>", "Clear only shapes on this layer (e.g. claude)")
+  .action(async (opts: { layer?: string }) => {
     const session = requireSession();
-    const res = await httpPost(`http://127.0.0.1:${session.port}/api/clear`, {});
+    const url = opts.layer
+      ? `http://127.0.0.1:${session.port}/api/clear?layer=${opts.layer}`
+      : `http://127.0.0.1:${session.port}/api/clear`;
+    const res = await httpPost(url, {});
     console.log(JSON.stringify(res));
   });
 
@@ -148,7 +155,7 @@ function httpPost(url: string, body: unknown): Promise<Record<string, unknown>> 
     const options = {
       hostname: urlObj.hostname,
       port: urlObj.port,
-      path: urlObj.pathname,
+      path: urlObj.pathname + urlObj.search,
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -9,12 +9,14 @@ import {
   wobbleArrow,
   makeLabel,
   STROKE_COLOR,
+  FILL_COLOR,
   STROKE_WIDTH,
   FONT_FAMILY,
 } from "../lib/wobble";
 
 export function useCanvas(
-  canvasElRef: React.RefObject<HTMLCanvasElement | null>
+  canvasElRef: React.RefObject<HTMLCanvasElement | null>,
+  containerRef: React.RefObject<HTMLDivElement | null>
 ) {
   const fabricRef = useRef<Canvas | null>(null);
   const spaceDownRef = useRef(false);
@@ -23,14 +25,17 @@ export function useCanvas(
 
   useEffect(() => {
     const el = canvasElRef.current;
-    if (!el) return;
+    const container = containerRef.current;
+    if (!el || !container) return;
 
-    el.width = window.innerWidth;
-    el.height = window.innerHeight;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    el.width = w;
+    el.height = h;
 
     const canvas = new Canvas(el, {
-      width: window.innerWidth,
-      height: window.innerHeight,
+      width: w,
+      height: h,
       backgroundColor: "#FAFAF7",
       selection: true,
     });
@@ -96,7 +101,10 @@ export function useCanvas(
 
     // ── Resize ──────────────────────────────────────────────────────────
     const onResize = () => {
-      canvas.setDimensions({ width: window.innerWidth, height: window.innerHeight });
+      if (!container) return;
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      canvas.setDimensions({ width: cw, height: ch });
       canvas.renderAll();
     };
     window.addEventListener("resize", onResize);
@@ -108,7 +116,11 @@ export function useCanvas(
       canvas.dispose();
       fabricRef.current = null;
     };
-  }, [canvasElRef]);
+  }, [canvasElRef, containerRef]);
+
+  const getCanvas = useCallback((): Canvas | null => {
+    return fabricRef.current;
+  }, []);
 
   // ── Auto-pan ────────────────────────────────────────────────────────────
   const autopan = useCallback((objects: FabricObject[]) => {
@@ -169,7 +181,86 @@ export function useCanvas(
     return canvas.toDataURL({ format: "png", multiplier: 1 });
   }, []);
 
-  return { renderCommands, clear, takeScreenshot, autopan };
+  const clearLayer = useCallback((layer: string) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const toRemove = canvas.getObjects().filter(
+      (obj) => (obj as unknown as { data?: { layer?: string } }).data?.layer === layer
+    );
+    for (const obj of toRemove) {
+      canvas.remove(obj);
+    }
+    canvas.renderAll();
+  }, []);
+
+  // ── Zoom controls ────────────────────────────────────────────────────────
+  const zoomIn = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    let zoom = canvas.getZoom() * 1.2;
+    zoom = Math.min(10, zoom);
+    const center = new Point(canvas.getWidth() / 2, canvas.getHeight() / 2);
+    canvas.zoomToPoint(center, zoom);
+    canvas.requestRenderAll();
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    let zoom = canvas.getZoom() / 1.2;
+    zoom = Math.max(0.1, zoom);
+    const center = new Point(canvas.getWidth() / 2, canvas.getHeight() / 2);
+    canvas.zoomToPoint(center, zoom);
+    canvas.requestRenderAll();
+  }, []);
+
+  const fitToScreen = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const objects = canvas.getObjects();
+    if (objects.length === 0) {
+      canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+      canvas.requestRenderAll();
+      return;
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const obj of objects) {
+      const br = obj.getBoundingRect();
+      minX = Math.min(minX, br.left);
+      minY = Math.min(minY, br.top);
+      maxX = Math.max(maxX, br.left + br.width);
+      maxY = Math.max(maxY, br.top + br.height);
+    }
+    const contentW = maxX - minX;
+    const contentH = maxY - minY;
+    if (contentW === 0 || contentH === 0) return;
+    const padding = 60;
+    const vw = canvas.getWidth() - padding * 2;
+    const vh = canvas.getHeight() - padding * 2;
+    const zoom = Math.min(vw / contentW, vh / contentH, 3);
+    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    canvas.zoomToPoint(new Point(canvas.getWidth() / 2, canvas.getHeight() / 2), zoom);
+    const vpt = canvas.viewportTransform!;
+    vpt[4] = canvas.getWidth() / 2 - cx * zoom;
+    vpt[5] = canvas.getHeight() / 2 - cy * zoom;
+    canvas.requestRenderAll();
+  }, []);
+
+  const getZoom = useCallback((): number => {
+    return fabricRef.current?.getZoom() ?? 1;
+  }, []);
+
+  return { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, fitToScreen, getZoom };
+}
+
+function tagAsClaude(obj: FabricObject): void {
+  obj.set({
+    selectable: false,
+    evented: false,
+    data: { layer: "claude" },
+  });
 }
 
 // ── Render commands (standalone, supports recursion for groups) ───────────
@@ -183,10 +274,12 @@ function renderCommandsToCanvas(
     switch (cmd.type) {
       case "rect": {
         const shape = wobbleRect(cmd.x, cmd.y, cmd.width, cmd.height);
+        tagAsClaude(shape);
         canvas.add(shape);
         added.push(shape);
         if (cmd.label) {
           const lbl = makeLabel(cmd.label, cmd.x + 4, cmd.y + cmd.height / 2 - 7);
+          tagAsClaude(lbl);
           canvas.add(lbl);
           added.push(lbl);
         }
@@ -194,10 +287,12 @@ function renderCommandsToCanvas(
       }
       case "circle": {
         const shape = wobbleCircle(cmd.x, cmd.y, cmd.radius);
+        tagAsClaude(shape);
         canvas.add(shape);
         added.push(shape);
         if (cmd.label) {
           const lbl = makeLabel(cmd.label, cmd.x - 20, cmd.y - 7);
+          tagAsClaude(lbl);
           canvas.add(lbl);
           added.push(lbl);
         }
@@ -205,10 +300,12 @@ function renderCommandsToCanvas(
       }
       case "ellipse": {
         const shape = wobbleEllipse(cmd.x, cmd.y, cmd.width / 2, cmd.height / 2);
+        tagAsClaude(shape);
         canvas.add(shape);
         added.push(shape);
         if (cmd.label) {
           const lbl = makeLabel(cmd.label, cmd.x - 20, cmd.y - 7);
+          tagAsClaude(lbl);
           canvas.add(lbl);
           added.push(lbl);
         }
@@ -216,18 +313,21 @@ function renderCommandsToCanvas(
       }
       case "line": {
         const shape = wobbleLine(cmd.x1, cmd.y1, cmd.x2, cmd.y2);
+        tagAsClaude(shape);
         canvas.add(shape);
         added.push(shape);
         break;
       }
       case "arrow": {
         const shape = wobbleArrow(cmd.x1, cmd.y1, cmd.x2, cmd.y2);
+        tagAsClaude(shape);
         canvas.add(shape);
         added.push(shape);
         if (cmd.label) {
           const mx = (cmd.x1 + cmd.x2) / 2;
           const my = (cmd.y1 + cmd.y2) / 2;
           const lbl = makeLabel(cmd.label, mx, my - 16);
+          tagAsClaude(lbl);
           canvas.add(lbl);
           added.push(lbl);
         }
@@ -239,10 +339,11 @@ function renderCommandsToCanvas(
           top: cmd.y,
           fontSize: cmd.fontSize ?? 16,
           fontFamily: FONT_FAMILY,
-          fill: STROKE_COLOR,
+          fill: FILL_COLOR,
           selectable: true,
           hasControls: false,
         });
+        tagAsClaude(t);
         canvas.add(t);
         added.push(t);
         break;
@@ -259,6 +360,7 @@ function renderCommandsToCanvas(
           selectable: true,
           hasControls: false,
         });
+        tagAsClaude(p);
         canvas.add(p);
         added.push(p);
         break;

@@ -27,8 +27,8 @@ export function broadcastDraw(payload: unknown): void {
   }
 }
 
-export function broadcastClear(): void {
-  const msg = JSON.stringify({ type: "clear" });
+export function broadcastClear(layer?: string): void {
+  const msg = JSON.stringify({ type: "clear", payload: layer || null });
   for (const client of state.clients) {
     if (client.readyState === WebSocket.WebSocket.OPEN) {
       client.send(msg);

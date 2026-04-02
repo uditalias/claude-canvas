@@ -11,10 +11,11 @@ export type DrawCommand =
 
 export interface DrawPayload {
   narration?: string;
+  animate?: boolean;
   commands: DrawCommand[];
 }
 
 export interface WsMessage {
   type: "draw" | "screenshot_request" | "screenshot_response" | "clear";
-  payload?: DrawPayload | string;
+  payload?: DrawPayload | string | null;
 }
