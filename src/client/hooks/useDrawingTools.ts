@@ -82,6 +82,19 @@ export function useDrawingTools({
     isDraggingRef.current = false;
     hitUserObjectRef.current = null;
 
+    // Cursor hints per tool
+    if (isPointer) {
+      canvas.defaultCursor = "default";
+    } else if (isDrawingTool) {
+      canvas.defaultCursor = "crosshair";
+    } else if (isShapeTool) {
+      canvas.defaultCursor = "crosshair";
+    } else if (activeTool === "text") {
+      canvas.defaultCursor = "text";
+    } else if (activeTool === "paint") {
+      canvas.defaultCursor = "pointer";
+    }
+
     if (ghostRef.current) {
       canvas.remove(ghostRef.current);
       ghostRef.current = null;
@@ -223,7 +236,7 @@ export function useDrawingTools({
           width: 0,
           height: 0,
           fill: "transparent",
-          stroke: "#888",
+          stroke: color,
           strokeWidth: 1,
           strokeDashArray: [5, 5],
           selectable: false,
@@ -240,7 +253,7 @@ export function useDrawingTools({
           rx: 0,
           ry: 0,
           fill: "transparent",
-          stroke: "#888",
+          stroke: color,
           strokeWidth: 1,
           strokeDashArray: [5, 5],
           selectable: false,
@@ -250,7 +263,7 @@ export function useDrawingTools({
         canvas.add(ghost);
       } else if (activeTool === "arrow" || activeTool === "line") {
         const ghost = new FabricLine([pointer.x, pointer.y, pointer.x, pointer.y], {
-          stroke: "#888",
+          stroke: color,
           strokeWidth: 1,
           strokeDashArray: [5, 5],
           selectable: false,

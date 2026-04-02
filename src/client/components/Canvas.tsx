@@ -2,6 +2,8 @@ import { useRef, useCallback, useState, useEffect } from "react";
 import { useCanvas } from "../hooks/useCanvas";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useDrawingTools } from "../hooks/useDrawingTools";
+import { useUndoRedo } from "../hooks/useUndoRedo";
+import { useSnapGuides } from "../hooks/useSnapGuides";
 import { Hud, ZoomControls } from "./Hud";
 import { Narration, NarrationHandle } from "./Narration";
 import { ContextMenu } from "./ContextMenu";
@@ -34,6 +36,24 @@ export function CanvasView({ toolState }: CanvasViewProps) {
     spaceDownRef,
     selectTool: toolState.selectTool,
   });
+
+  const { undo, redo } = useUndoRedo({ getCanvas });
+  useSnapGuides({ getCanvas });
+
+  // Undo/redo keyboard shortcuts
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "z" && e.shiftKey) {
+        e.preventDefault();
+        redo();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [undo, redo]);
 
   // Fix #10: Right-click context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -141,6 +161,21 @@ export function CanvasView({ toolState }: CanvasViewProps) {
                 (contextMenu.target as any).bringToFront();
               }
               canvas.requestRenderAll();
+            }
+          }}
+          onDuplicate={() => {
+            const canvas = getCanvas();
+            if (canvas && contextMenu.target) {
+              contextMenu.target.clone().then((cloned: FabricObject) => {
+                cloned.set({
+                  left: (cloned.left ?? 0) + 10,
+                  top: (cloned.top ?? 0) + 10,
+                });
+                (cloned as any).data = { layer: "user" };
+                canvas.add(cloned);
+                canvas.setActiveObject(cloned);
+                canvas.requestRenderAll();
+              });
             }
           }}
           onDelete={() => {

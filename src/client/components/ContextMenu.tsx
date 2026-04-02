@@ -5,11 +5,12 @@ interface ContextMenuProps {
   y: number;
   onBringToFront: () => void;
   onSendToBack: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
   onClose: () => void;
 }
 
-export function ContextMenu({ x, y, onBringToFront, onSendToBack, onDelete, onClose }: ContextMenuProps) {
+export function ContextMenu({ x, y, onBringToFront, onSendToBack, onDuplicate, onDelete, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,6 +55,12 @@ export function ContextMenu({ x, y, onBringToFront, onSendToBack, onDelete, onCl
         onClick={() => { onSendToBack(); onClose(); }}
       >
         Send to back
+      </button>
+      <button
+        className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+        onClick={() => { onDuplicate(); onClose(); }}
+      >
+        Duplicate
       </button>
       <div className="h-px bg-gray-200 my-1" />
       <button
