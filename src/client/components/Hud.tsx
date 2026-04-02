@@ -34,12 +34,13 @@ export function Hud() {
 interface ZoomControlsProps {
   zoomIn: () => void;
   zoomOut: () => void;
+  resetZoom: () => void;
   fitToScreen: () => void;
   getZoom: () => number;
   onExport?: () => void;
 }
 
-export function ZoomControls({ zoomIn, zoomOut, fitToScreen, getZoom, onExport }: ZoomControlsProps) {
+export function ZoomControls({ zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onExport }: ZoomControlsProps) {
   const [zoom, setZoom] = useState(100);
 
   useEffect(() => {
@@ -68,9 +69,19 @@ export function ZoomControls({ zoomIn, zoomOut, fitToScreen, getZoom, onExport }
         </TooltipTrigger>
         <TooltipContent style={POPPINS_STYLE}>Zoom out</TooltipContent>
       </Tooltip>
-      <span className="w-12 text-center text-[11px] text-muted-foreground font-medium select-none">
-        {zoom}%
-      </span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            onClick={resetZoom}
+            className="rounded-none text-muted-foreground text-[11px] font-medium w-12 px-0"
+            aria-label="Reset zoom to 100%"
+          >
+            {zoom}%
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent style={POPPINS_STYLE}>Reset to 100%</TooltipContent>
+      </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button

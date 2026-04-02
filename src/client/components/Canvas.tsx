@@ -10,7 +10,7 @@ import { ContextMenu } from "./ContextMenu";
 import type { WsMessage, DrawPayload } from "../lib/protocol";
 import type { ToolState } from "../hooks/useToolState";
 import type { ResolvedTheme, ThemeMode } from "../hooks/useTheme";
-import { FabricObject } from "fabric";
+import { FabricObject, Group, IText, Point } from "fabric";
 
 interface CanvasViewProps {
   toolState: ToolState;
@@ -27,7 +27,7 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
   const narrationRef = useRef<NarrationHandle>(null);
   const sendRef = useRef<(msg: object) => void>(undefined);
 
-  const { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, fitToScreen, getZoom } =
+  const { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom } =
     useCanvas(canvasElRef, containerRef);
 
   useDrawingTools({
@@ -42,20 +42,71 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
   const { undo, redo } = useUndoRedo({ getCanvas });
   useSnapGuides({ getCanvas });
 
-  // Undo/redo keyboard shortcuts
+  // Keyboard shortcuts: undo/redo, group/ungroup, zoom to selection
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      const canvas = getCanvas();
+      if (!canvas) return;
+
       if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
       } else if ((e.metaKey || e.ctrlKey) && e.key === "z" && e.shiftKey) {
         e.preventDefault();
         redo();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "g" && !e.shiftKey) {
+        // Group
+        e.preventDefault();
+        const selected = canvas.getActiveObjects().filter(isUserLayer);
+        if (selected.length < 2) return;
+        canvas.discardActiveObject();
+        const group = new Group(selected, { originX: "left", originY: "top" });
+        for (const obj of selected) canvas.remove(obj);
+        (group as any).data = { layer: "user" };
+        canvas.add(group);
+        canvas.setActiveObject(group);
+        canvas.requestRenderAll();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "g" && e.shiftKey) {
+        // Ungroup
+        e.preventDefault();
+        const active = canvas.getActiveObject();
+        if (!active || !(active instanceof Group) || !isUserLayer(active)) return;
+        // Only ungroup user-created groups (which contain other user-layer groups/objects)
+        // Don't ungroup rough.js shape groups (which contain raw Path objects)
+        const children = active.getObjects();
+        const hasUserChildren = children.some(c => (c as any).data?.layer === "user");
+        if (!hasUserChildren) return;
+        const items = active.removeAll();
+        canvas.remove(active);
+        for (const item of items) {
+          (item as any).data = { layer: "user" };
+          canvas.add(item);
+        }
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "1") {
+        // Zoom to selection
+        e.preventDefault();
+        const active = canvas.getActiveObject();
+        if (!active) return;
+        const bounds = active.getBoundingRect();
+        const cw = canvas.width ?? 800;
+        const ch = canvas.height ?? 600;
+        const zoom = Math.min(cw / (bounds.width + 80), ch / (bounds.height + 80), 5);
+        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+        canvas.zoomToPoint(new Point(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2), zoom);
+        const vpt = canvas.viewportTransform;
+        if (vpt) {
+          vpt[4] = cw / 2 - (bounds.left + bounds.width / 2) * zoom;
+          vpt[5] = ch / 2 - (bounds.top + bounds.height / 2) * zoom;
+          canvas.setViewportTransform(vpt);
+        }
+        canvas.requestRenderAll();
       }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [undo, redo]);
+  }, [undo, redo, getCanvas]);
 
   // Fix #10: Right-click context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -159,6 +210,7 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
       <ZoomControls
         zoomIn={zoomIn}
         zoomOut={zoomOut}
+        resetZoom={resetZoom}
         fitToScreen={fitToScreen}
         getZoom={getZoom}
         onExport={() => {
@@ -176,6 +228,36 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
           x={contextMenu.x}
           y={contextMenu.y}
           opacity={contextMenu.target.opacity ?? 1}
+          locked={contextMenu.target.lockMovementX === true}
+          textOptions={contextMenu.target instanceof IText ? {
+            fontSize: (contextMenu.target as IText).fontSize ?? 16,
+            fontWeight: String((contextMenu.target as IText).fontWeight ?? "normal"),
+            fontStyle: String((contextMenu.target as IText).fontStyle ?? "normal"),
+            underline: (contextMenu.target as IText).underline ?? false,
+            linethrough: (contextMenu.target as IText).linethrough ?? false,
+          } : undefined}
+          onTextChange={contextMenu.target instanceof IText ? (opts) => {
+            const canvas = getCanvas();
+            if (canvas && contextMenu.target) {
+              contextMenu.target.set(opts as any);
+              canvas.requestRenderAll();
+            }
+          } : undefined}
+          onToggleLock={() => {
+            const canvas = getCanvas();
+            if (canvas && contextMenu.target) {
+              const isLocked = contextMenu.target.lockMovementX === true;
+              contextMenu.target.set({
+                lockMovementX: !isLocked,
+                lockMovementY: !isLocked,
+                lockRotation: !isLocked,
+                lockScalingX: !isLocked,
+                lockScalingY: !isLocked,
+                hasControls: isLocked,
+              });
+              canvas.requestRenderAll();
+            }
+          }}
           onOpacityChange={(val) => {
             const canvas = getCanvas();
             if (canvas && contextMenu.target) {

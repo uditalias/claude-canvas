@@ -221,6 +221,13 @@ export function useCanvas(
     canvas.requestRenderAll();
   }, []);
 
+  const resetZoom = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+    canvas.requestRenderAll();
+  }, []);
+
   const fitToScreen = useCallback(() => {
     const canvas = fabricRef.current;
     if (!canvas) return;
@@ -259,7 +266,7 @@ export function useCanvas(
     return fabricRef.current?.getZoom() ?? 1;
   }, []);
 
-  return { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, fitToScreen, getZoom };
+  return { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom };
 }
 
 function tagAsClaude(obj: FabricObject): void {

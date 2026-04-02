@@ -12,6 +12,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  HelpCircle,
 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { Slider } from "./ui/slider";
@@ -84,9 +85,10 @@ function ToolButton({
 
 interface ToolboxProps extends ToolState {
   theme: { mode: ThemeMode; setThemeMode: (m: ThemeMode) => void };
+  onShowShortcuts?: () => void;
 }
 
-export function Toolbox({ activeTool, selectTool, color, setColor, brushSize, setBrushSize, theme }: ToolboxProps) {
+export function Toolbox({ activeTool, selectTool, color, setColor, brushSize, setBrushSize, theme, onShowShortcuts }: ToolboxProps) {
   return (
     <div
       className="flex flex-col items-center w-[52px] min-w-[52px] h-full bg-white dark:bg-[#232328] border-r border-gray-200 dark:border-[#333338] py-3 gap-0.5 z-50 select-none"
@@ -235,6 +237,22 @@ export function Toolbox({ activeTool, selectTool, color, setColor, brushSize, se
 
       {/* Spacer */}
       <div className="flex-1" />
+
+      {/* Help */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onShowShortcuts}
+            className="w-9 h-9 rounded-md flex items-center justify-center cursor-pointer text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-[#333338]"
+            aria-label="Keyboard shortcuts"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" style={POPPINS_STYLE}>
+          Shortcuts (?)
+        </TooltipContent>
+      </Tooltip>
 
       {/* Theme toggle */}
       <Tooltip>
