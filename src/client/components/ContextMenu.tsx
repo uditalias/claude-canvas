@@ -1,16 +1,25 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Slider } from "./ui/slider";
 
 interface ContextMenuProps {
   x: number;
   y: number;
+  opacity: number;
   onBringToFront: () => void;
   onSendToBack: () => void;
   onDuplicate: () => void;
+  onOpacityChange: (opacity: number) => void;
   onDelete: () => void;
   onClose: () => void;
 }
 
-export function ContextMenu({ x, y, onBringToFront, onSendToBack, onDuplicate, onDelete, onClose }: ContextMenuProps) {
+const POPPINS_STYLE = { fontFamily: "'Poppins', sans-serif" };
+
+const menuItemClass =
+  "w-full text-left px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent cursor-pointer transition-colors";
+
+export function ContextMenu({ x, y, opacity: initialOpacity, onBringToFront, onSendToBack, onDuplicate, onOpacityChange, onDelete, onClose }: ContextMenuProps) {
+  const [opacity, setOpacity] = useState(Math.round(initialOpacity * 100));
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -22,7 +31,6 @@ export function ContextMenu({ x, y, onBringToFront, onSendToBack, onDuplicate, o
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    // Delay attaching listener so the opening right-click doesn't immediately close the menu
     const raf = requestAnimationFrame(() => {
       document.addEventListener("mousedown", handleClickOutside);
     });
@@ -37,34 +45,38 @@ export function ContextMenu({ x, y, onBringToFront, onSendToBack, onDuplicate, o
   return (
     <div
       ref={menuRef}
-      className="fixed bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-[300] min-w-[160px]"
-      style={{
-        left: x,
-        top: y,
-        fontFamily: "'Poppins', sans-serif",
-      }}
+      className="fixed bg-popover border border-border rounded-md shadow-lg py-1 z-[300] w-48"
+      style={{ left: x, top: y, ...POPPINS_STYLE }}
     >
-      <button
-        className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
-        onClick={() => { onBringToFront(); onClose(); }}
-      >
+      <button className={menuItemClass} onClick={() => { onBringToFront(); onClose(); }}>
         Bring to front
       </button>
-      <button
-        className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
-        onClick={() => { onSendToBack(); onClose(); }}
-      >
+      <button className={menuItemClass} onClick={() => { onSendToBack(); onClose(); }}>
         Send to back
       </button>
-      <button
-        className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
-        onClick={() => { onDuplicate(); onClose(); }}
-      >
+      <button className={menuItemClass} onClick={() => { onDuplicate(); onClose(); }}>
         Duplicate
       </button>
-      <div className="h-px bg-gray-200 my-1" />
+      <div className="h-px bg-border my-1" />
+      <div className="px-3 py-1.5">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs text-muted-foreground">Opacity</span>
+          <span className="text-xs text-muted-foreground">{opacity}%</span>
+        </div>
+        <Slider
+          min={5}
+          max={100}
+          step={5}
+          value={[opacity]}
+          onValueChange={([val]) => {
+            setOpacity(val);
+            onOpacityChange(val / 100);
+          }}
+        />
+      </div>
+      <div className="h-px bg-border my-1" />
       <button
-        className="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 cursor-pointer transition-colors"
+        className="w-full text-left px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10 cursor-pointer transition-colors"
         onClick={() => { onDelete(); onClose(); }}
       >
         Delete

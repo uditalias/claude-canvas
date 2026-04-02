@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -118,4 +120,9 @@ body,
   overflow: hidden;
   background: #fafaf7;
   font-family: "Poppins", sans-serif;
+}
+
+.dark body,
+.dark #root {
+  background: #1a1a1e;
 }

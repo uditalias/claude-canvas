@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
+import { Minus, Plus, Maximize, Download } from "lucide-react";
 
 const POPPINS_STYLE = { fontFamily: "'Poppins', sans-serif" };
 
@@ -16,7 +18,7 @@ export function Hud() {
 
   return (
     <div
-      className="fixed top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white/80 border border-gray-200 rounded-full px-3.5 py-1 text-[11px] text-gray-500 pointer-events-none backdrop-blur-sm shadow-sm z-[100]"
+      className="fixed top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-background/80 border border-border rounded-full px-3.5 py-1 text-[11px] text-muted-foreground pointer-events-none backdrop-blur-sm shadow-sm z-[100]"
       style={POPPINS_STYLE}
     >
       <span
@@ -24,7 +26,7 @@ export function Hud() {
           status === "connected" ? "bg-green-500" : "bg-red-400"
         }`}
       />
-      <span className="text-gray-600 font-medium tracking-wide">claude-canvas</span>
+      <span className="text-foreground/70 font-medium tracking-wide">claude-canvas</span>
     </div>
   );
 }
@@ -34,9 +36,10 @@ interface ZoomControlsProps {
   zoomOut: () => void;
   fitToScreen: () => void;
   getZoom: () => number;
+  onExport?: () => void;
 }
 
-export function ZoomControls({ zoomIn, zoomOut, fitToScreen, getZoom }: ZoomControlsProps) {
+export function ZoomControls({ zoomIn, zoomOut, fitToScreen, getZoom, onExport }: ZoomControlsProps) {
   const [zoom, setZoom] = useState(100);
 
   useEffect(() => {
@@ -48,41 +51,74 @@ export function ZoomControls({ zoomIn, zoomOut, fitToScreen, getZoom }: ZoomCont
 
   return (
     <div
-      className="fixed bottom-3 right-3 flex items-center gap-0 bg-white border border-gray-200 rounded-lg shadow-sm z-[100]"
+      className="fixed bottom-3 right-3 flex items-center gap-0 bg-background border border-border rounded-lg shadow-sm z-[100]"
       style={POPPINS_STYLE}
     >
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={zoomOut}
-        className="rounded-r-none text-gray-600 text-sm font-medium"
-        aria-label="Zoom out"
-      >
-        &minus;
-      </Button>
-      <span className="w-12 text-center text-[11px] text-gray-500 font-medium select-none">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={zoomOut}
+            className="rounded-r-none text-muted-foreground"
+            aria-label="Zoom out"
+          >
+            <Minus className="w-3.5 h-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent style={POPPINS_STYLE}>Zoom out</TooltipContent>
+      </Tooltip>
+      <span className="w-12 text-center text-[11px] text-muted-foreground font-medium select-none">
         {zoom}%
       </span>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={zoomIn}
-        className="rounded-none text-gray-600 text-sm font-medium"
-        aria-label="Zoom in"
-      >
-        +
-      </Button>
-      <div className="w-px h-5 bg-gray-200" />
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={fitToScreen}
-        className="rounded-l-none text-gray-600 text-sm"
-        aria-label="Fit to screen"
-        title="Fit to screen"
-      >
-        &#x229e;
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={zoomIn}
+            className="rounded-none text-muted-foreground"
+            aria-label="Zoom in"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent style={POPPINS_STYLE}>Zoom in</TooltipContent>
+      </Tooltip>
+      <div className="w-px h-5 bg-border" />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={fitToScreen}
+            className="rounded-none text-muted-foreground"
+            aria-label="Fit to screen"
+          >
+            <Maximize className="w-3.5 h-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent style={POPPINS_STYLE}>Fit to screen</TooltipContent>
+      </Tooltip>
+      {onExport && (
+        <>
+          <div className="w-px h-5 bg-border" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onExport}
+                className="rounded-l-none text-muted-foreground"
+                aria-label="Export as PNG"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent style={POPPINS_STYLE}>Export PNG</TooltipContent>
+          </Tooltip>
+        </>
+      )}
     </div>
   );
 }

@@ -283,24 +283,39 @@ export function useDrawingTools({
       const pointer = canvas.getScenePoint(opt.e as MouseEvent);
       const start = dragStartRef.current;
 
-      // Figma-style: shape spans from click to pointer in any direction
+      const shiftKey = (opt.e as MouseEvent).shiftKey;
+
       if (activeTool === "rect") {
         const ghost = ghostRef.current as Rect;
+        let w = Math.abs(pointer.x - start.x);
+        let h = Math.abs(pointer.y - start.y);
+        if (shiftKey) { const s = Math.max(w, h); w = s; h = s; }
         const left = Math.min(start.x, pointer.x);
         const top = Math.min(start.y, pointer.y);
-        const w = Math.abs(pointer.x - start.x);
-        const h = Math.abs(pointer.y - start.y);
         ghost.set({ left, top, width: w, height: h });
       } else if (activeTool === "circle") {
         const ghost = ghostRef.current as Ellipse;
+        let w = Math.abs(pointer.x - start.x);
+        let h = Math.abs(pointer.y - start.y);
+        if (shiftKey) { const s = Math.max(w, h); w = s; h = s; }
         const left = Math.min(start.x, pointer.x);
         const top = Math.min(start.y, pointer.y);
-        const w = Math.abs(pointer.x - start.x);
-        const h = Math.abs(pointer.y - start.y);
         ghost.set({ left, top, rx: w / 2, ry: h / 2 });
       } else if (activeTool === "arrow" || activeTool === "line") {
         const ghost = ghostRef.current as FabricLine;
-        ghost.set({ x2: pointer.x, y2: pointer.y });
+        let x2 = pointer.x;
+        let y2 = pointer.y;
+        if (shiftKey) {
+          // Snap to nearest 45-degree angle
+          const adx = Math.abs(x2 - start.x);
+          const ady = Math.abs(y2 - start.y);
+          const angle = Math.atan2(ady, adx);
+          const dist = Math.sqrt(adx * adx + ady * ady);
+          const snapped = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+          x2 = start.x + Math.cos(snapped) * dist * Math.sign(x2 - start.x || 1);
+          y2 = start.y + Math.sin(snapped) * dist * Math.sign(y2 - start.y || 1);
+        }
+        ghost.set({ x2, y2 });
       }
       canvas.requestRenderAll();
     };
@@ -352,14 +367,18 @@ export function useDrawingTools({
       }
 
       // Minimum drag distance
-      const dx = pointer.x - start.x;
-      const dy = pointer.y - start.y;
-      if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+      const rawDx = pointer.x - start.x;
+      const rawDy = pointer.y - start.y;
+      if (Math.abs(rawDx) < 5 && Math.abs(rawDy) < 5) return;
 
+      const shiftKey = (opt.e as MouseEvent).shiftKey;
+      let w = Math.abs(rawDx);
+      let h = Math.abs(rawDy);
+      if (shiftKey && (activeTool === "rect" || activeTool === "circle")) {
+        const s = Math.max(w, h); w = s; h = s;
+      }
       const left = Math.min(start.x, pointer.x);
       const top = Math.min(start.y, pointer.y);
-      const w = Math.abs(dx);
-      const h = Math.abs(dy);
 
       if (activeTool === "rect") {
         const shape = userRoughRect(left, top, w, h, color);
@@ -369,18 +388,34 @@ export function useDrawingTools({
         const shape = userRoughEllipse(left, top, w, h, color);
         tagAsUser(shape);
         canvas.add(shape);
-      } else if (activeTool === "line") {
-        const shape = userRoughLine(start.x, start.y, pointer.x, pointer.y, color);
-        tagAsUser(shape);
-        canvas.add(shape);
-      } else if (activeTool === "arrow") {
-        const shape = userRoughArrow(start.x, start.y, pointer.x, pointer.y, color);
-        tagAsUser(shape);
-        canvas.add(shape);
+      } else if (activeTool === "line" || activeTool === "arrow") {
+        let x2 = pointer.x;
+        let y2 = pointer.y;
+        if (shiftKey) {
+          const adx = Math.abs(x2 - start.x);
+          const ady = Math.abs(y2 - start.y);
+          const dist = Math.sqrt(adx * adx + ady * ady);
+          const angle = Math.atan2(ady, adx);
+          const snapped = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+          x2 = start.x + Math.cos(snapped) * dist * Math.sign(x2 - start.x || 1);
+          y2 = start.y + Math.sin(snapped) * dist * Math.sign(y2 - start.y || 1);
+        }
+        if (activeTool === "line") {
+          const shape = userRoughLine(start.x, start.y, x2, y2, color);
+          tagAsUser(shape);
+          canvas.add(shape);
+        } else {
+          const shape = userRoughArrow(start.x, start.y, x2, y2, color);
+          tagAsUser(shape);
+          canvas.add(shape);
+        }
       }
 
       canvas.requestRenderAll();
     };
+
+    // Clipboard for copy/paste
+    let clipboard: FabricObject[] = [];
 
     // Keyboard handlers
     const onKeyDown = (e: KeyboardEvent) => {
@@ -393,6 +428,43 @@ export function useDrawingTools({
       if (e.key === "Escape") {
         canvas.discardActiveObject();
         canvas.requestRenderAll();
+        return;
+      }
+
+      // Copy
+      if ((e.metaKey || e.ctrlKey) && e.key === "c") {
+        const activeObj = canvas.getActiveObject();
+        if (activeObj && (activeObj as IText).isEditing) return;
+        const selected = canvas.getActiveObjects().filter(isUserLayer);
+        if (selected.length > 0) {
+          clipboard = selected;
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // Paste
+      if ((e.metaKey || e.ctrlKey) && e.key === "v") {
+        if (clipboard.length === 0) return;
+        e.preventDefault();
+        const clonePromises = clipboard.map((obj) => obj.clone());
+        Promise.all(clonePromises).then((clones) => {
+          canvas.discardActiveObject();
+          for (const cloned of clones) {
+            cloned.set({
+              left: (cloned.left ?? 0) + 20,
+              top: (cloned.top ?? 0) + 20,
+            });
+            (cloned as any).data = { layer: "user" };
+            canvas.add(cloned);
+          }
+          if (clones.length === 1) {
+            canvas.setActiveObject(clones[0]);
+          }
+          canvas.requestRenderAll();
+          // Update clipboard to the new clones so next paste offsets further
+          clipboard = clones;
+        });
         return;
       }
 

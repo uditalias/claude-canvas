@@ -9,12 +9,16 @@ import {
   Type,
   PaintBucket,
   Palette,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { Slider } from "./ui/slider";
 import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
 import type { ToolType, ToolState } from "../hooks/useToolState";
 import { COLOR_PRESETS, TOOL_SHORTCUTS } from "../hooks/useToolState";
+import type { ThemeMode } from "../hooks/useTheme";
 
 const POPPINS_STYLE = { fontFamily: "'Poppins', sans-serif" };
 
@@ -63,8 +67,8 @@ function ToolButton({
           onClick={() => selectTool(type)}
           className={`w-9 h-9 p-0 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors cursor-pointer ${
             activeTool === type
-              ? "bg-blue-100 text-blue-700"
-              : "bg-transparent text-gray-700 hover:bg-gray-100"
+              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400"
+              : "bg-transparent text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-[#333338]"
           }`}
           aria-label={label}
         >
@@ -78,10 +82,14 @@ function ToolButton({
   );
 }
 
-export function Toolbox({ activeTool, selectTool, color, setColor, brushSize, setBrushSize }: ToolState) {
+interface ToolboxProps extends ToolState {
+  theme: { mode: ThemeMode; setThemeMode: (m: ThemeMode) => void };
+}
+
+export function Toolbox({ activeTool, selectTool, color, setColor, brushSize, setBrushSize, theme }: ToolboxProps) {
   return (
     <div
-      className="flex flex-col items-center w-[52px] min-w-[52px] h-full bg-white border-r border-gray-200 py-3 gap-0.5 z-50 select-none"
+      className="flex flex-col items-center w-[52px] min-w-[52px] h-full bg-white dark:bg-[#232328] border-r border-gray-200 dark:border-[#333338] py-3 gap-0.5 z-50 select-none"
       style={POPPINS_STYLE}
     >
       {/* Drawing tools group */}
@@ -99,7 +107,7 @@ export function Toolbox({ activeTool, selectTool, color, setColor, brushSize, se
       </div>
 
       {/* Separator */}
-      <div className="w-7 h-px bg-gray-200 my-1.5" />
+      <div className="w-7 h-px bg-gray-200 dark:bg-[#333338] my-1.5" />
 
       {/* Shape tools group */}
       <div className="flex flex-col items-center gap-0.5">
@@ -116,7 +124,7 @@ export function Toolbox({ activeTool, selectTool, color, setColor, brushSize, se
       </div>
 
       {/* Separator */}
-      <div className="w-7 h-px bg-gray-200 my-1.5" />
+      <div className="w-7 h-px bg-gray-200 dark:bg-[#333338] my-1.5" />
 
       {/* Other tools group */}
       <div className="flex flex-col items-center gap-0.5">
@@ -133,7 +141,7 @@ export function Toolbox({ activeTool, selectTool, color, setColor, brushSize, se
       </div>
 
       {/* Separator between tools and color/size */}
-      <div className="w-7 h-px bg-gray-300 my-2" />
+      <div className="w-7 h-px bg-gray-300 dark:bg-[#333338] my-2" />
 
       {/* Color popover */}
       <Popover>
@@ -141,7 +149,7 @@ export function Toolbox({ activeTool, selectTool, color, setColor, brushSize, se
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
               <button
-                className="w-9 h-9 rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-100"
+                className="w-9 h-9 rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-[#333338]"
                 aria-label="Color"
               >
                 <div
@@ -192,7 +200,7 @@ export function Toolbox({ activeTool, selectTool, color, setColor, brushSize, se
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
               <button
-                className="w-9 h-9 rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-100"
+                className="w-9 h-9 rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-[#333338]"
                 aria-label="Brush size"
               >
                 <div
@@ -224,6 +232,28 @@ export function Toolbox({ activeTool, selectTool, color, setColor, brushSize, se
           </div>
         </PopoverContent>
       </Popover>
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Theme toggle */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => {
+              const next: ThemeMode = theme.mode === "light" ? "dark" : theme.mode === "dark" ? "system" : "light";
+              theme.setThemeMode(next);
+            }}
+            className="w-9 h-9 rounded-md flex items-center justify-center cursor-pointer text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-[#333338]"
+            aria-label="Toggle theme"
+          >
+            {theme.mode === "light" ? <Sun className="w-4 h-4" /> : theme.mode === "dark" ? <Moon className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" style={POPPINS_STYLE}>
+          Theme: {theme.mode}
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }

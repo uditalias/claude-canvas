@@ -9,17 +9,19 @@ import { Narration, NarrationHandle } from "./Narration";
 import { ContextMenu } from "./ContextMenu";
 import type { WsMessage, DrawPayload } from "../lib/protocol";
 import type { ToolState } from "../hooks/useToolState";
+import type { ResolvedTheme, ThemeMode } from "../hooks/useTheme";
 import { FabricObject } from "fabric";
 
 interface CanvasViewProps {
   toolState: ToolState;
+  theme: { mode: ThemeMode; resolved: ResolvedTheme; setThemeMode: (m: ThemeMode) => void };
 }
 
 function isUserLayer(obj: FabricObject): boolean {
   return (obj as unknown as { data?: { layer?: string } }).data?.layer === "user";
 }
 
-export function CanvasView({ toolState }: CanvasViewProps) {
+export function CanvasView({ toolState, theme }: CanvasViewProps) {
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const narrationRef = useRef<NarrationHandle>(null);
@@ -141,16 +143,46 @@ export function CanvasView({ toolState }: CanvasViewProps) {
 
   return (
     <>
-      <div ref={containerRef} className="absolute inset-0">
+      <div
+        ref={containerRef}
+        className="absolute inset-0"
+        style={{
+          backgroundColor: theme.resolved === "dark" ? "#1a1a1e" : "#FAFAF7",
+          backgroundImage: `radial-gradient(circle, ${theme.resolved === "dark" ? "#333338" : "#d4d4d4"} 0.75px, transparent 0.75px)`,
+          backgroundSize: "20px 20px",
+        }}
+      >
         <canvas ref={canvasElRef} />
       </div>
       <Hud />
       <Narration ref={narrationRef} />
-      <ZoomControls zoomIn={zoomIn} zoomOut={zoomOut} fitToScreen={fitToScreen} getZoom={getZoom} />
+      <ZoomControls
+        zoomIn={zoomIn}
+        zoomOut={zoomOut}
+        fitToScreen={fitToScreen}
+        getZoom={getZoom}
+        onExport={() => {
+          const dataUrl = takeScreenshot();
+          if (dataUrl) {
+            const a = document.createElement("a");
+            a.href = dataUrl;
+            a.download = "claude-canvas.png";
+            a.click();
+          }
+        }}
+      />
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
+          opacity={contextMenu.target.opacity ?? 1}
+          onOpacityChange={(val) => {
+            const canvas = getCanvas();
+            if (canvas && contextMenu.target) {
+              contextMenu.target.set({ opacity: val });
+              canvas.requestRenderAll();
+            }
+          }}
           onBringToFront={() => {
             const canvas = getCanvas();
             if (canvas && contextMenu.target) {

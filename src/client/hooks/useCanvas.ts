@@ -36,7 +36,7 @@ export function useCanvas(
     const canvas = new Canvas(el, {
       width: w,
       height: h,
-      backgroundColor: "#FAFAF7",
+      backgroundColor: "transparent",
       selection: true,
     });
     fabricRef.current = canvas;
@@ -178,7 +178,14 @@ export function useCanvas(
   const takeScreenshot = useCallback((): string => {
     const canvas = fabricRef.current;
     if (!canvas) return "";
-    return canvas.toDataURL({ format: "png", multiplier: 1 });
+    // Temporarily set white background for export
+    const prevBg = canvas.backgroundColor;
+    canvas.backgroundColor = "#FAFAF7";
+    canvas.renderAll();
+    const dataUrl = canvas.toDataURL({ format: "png", multiplier: 1 });
+    canvas.backgroundColor = prevBg;
+    canvas.renderAll();
+    return dataUrl;
   }, []);
 
   const clearLayer = useCallback((layer: string) => {
