@@ -116,41 +116,42 @@ function drawableToFabricObjects(drawable: Drawable, fillColorOverride?: string,
 
 export function roughRect(x: number, y: number, w: number, h: number): Group {
   const seed = positionSeed(x, y, w, h);
-  const drawable = gen().rectangle(x, y, w, h, { ...ROUGH_OPTS, seed });
-  const objects = drawableToFabricObjects(drawable);
+  const fillLight = hexToRgba(FILL_COLOR, 0.35);
+  const drawable = gen().rectangle(x, y, w, h, { ...ROUGH_OPTS, stroke: FILL_COLOR, fill: fillLight, seed });
+  const objects = drawableToFabricObjects(drawable, fillLight, FILL_COLOR);
   return new Group(objects, { selectable: true, hasControls: false });
 }
 
 export function roughCircle(cx: number, cy: number, r: number): Group {
   const seed = positionSeed(cx, cy, r, r);
-  // rough.js circle takes diameter, not radius
-  const drawable = gen().circle(cx, cy, r * 2, { ...ROUGH_OPTS, seed });
-  const objects = drawableToFabricObjects(drawable);
+  const fillLight = hexToRgba(FILL_COLOR, 0.35);
+  const drawable = gen().circle(cx, cy, r * 2, { ...ROUGH_OPTS, stroke: FILL_COLOR, fill: fillLight, seed });
+  const objects = drawableToFabricObjects(drawable, fillLight, FILL_COLOR);
   return new Group(objects, { selectable: true, hasControls: false });
 }
 
 export function roughEllipse(cx: number, cy: number, rx: number, ry: number): Group {
   const seed = positionSeed(cx, cy, rx, ry);
-  const drawable = gen().ellipse(cx, cy, rx * 2, ry * 2, { ...ROUGH_OPTS, seed });
-  const objects = drawableToFabricObjects(drawable);
+  const fillLight = hexToRgba(FILL_COLOR, 0.35);
+  const drawable = gen().ellipse(cx, cy, rx * 2, ry * 2, { ...ROUGH_OPTS, stroke: FILL_COLOR, fill: fillLight, seed });
+  const objects = drawableToFabricObjects(drawable, fillLight, FILL_COLOR);
   return new Group(objects, { selectable: true, hasControls: false });
 }
 
 export function roughLine(x1: number, y1: number, x2: number, y2: number): Group {
   const seed = positionSeed(x1, y1, x2, y2);
-  const drawable = gen().line(x1, y1, x2, y2, { ...LINE_ROUGH_OPTS, seed });
-  const objects = drawableToFabricObjects(drawable);
+  const drawable = gen().line(x1, y1, x2, y2, { ...LINE_ROUGH_OPTS, stroke: FILL_COLOR, seed });
+  const objects = drawableToFabricObjects(drawable, undefined, FILL_COLOR);
   return new Group(objects, { selectable: true, hasControls: false });
 }
 
 export function roughArrow(x1: number, y1: number, x2: number, y2: number): Group {
   const seed = positionSeed(x1, y1, x2, y2);
+  const opts = { ...LINE_ROUGH_OPTS, stroke: FILL_COLOR, seed };
 
-  // Line body
-  const lineDrawable = gen().line(x1, y1, x2, y2, { ...LINE_ROUGH_OPTS, seed });
-  const lineObjects = drawableToFabricObjects(lineDrawable);
+  const lineDrawable = gen().line(x1, y1, x2, y2, opts);
+  const lineObjects = drawableToFabricObjects(lineDrawable, undefined, FILL_COLOR);
 
-  // Arrowhead
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -164,27 +165,10 @@ export function roughArrow(x1: number, y1: number, x2: number, y2: number): Grou
   const bx = x2 - ux * headLen + uy * headWidth;
   const by = y2 - uy * headLen + (-ux) * headWidth;
 
-  const headDrawable = gen().linearPath(
-    [
-      [x2, y2],
-      [ax, ay],
-    ],
-    { ...LINE_ROUGH_OPTS, seed: seed + 1 }
-  );
-  const headDrawable2 = gen().linearPath(
-    [
-      [x2, y2],
-      [bx, by],
-    ],
-    { ...LINE_ROUGH_OPTS, seed: seed + 2 }
-  );
+  const h1 = gen().linearPath([[x2, y2], [ax, ay]], { ...opts, seed: seed + 1 });
+  const h2 = gen().linearPath([[x2, y2], [bx, by]], { ...opts, seed: seed + 2 });
 
-  const headObjects = [
-    ...drawableToFabricObjects(headDrawable),
-    ...drawableToFabricObjects(headDrawable2),
-  ];
-
-  return new Group([...lineObjects, ...headObjects], {
+  return new Group([...lineObjects, ...drawableToFabricObjects(h1, undefined, FILL_COLOR), ...drawableToFabricObjects(h2, undefined, FILL_COLOR)], {
     selectable: true,
     hasControls: false,
   });
@@ -210,26 +194,26 @@ export function hexToRgba(hex: string, alpha: number): string {
 export function userRoughRect(left: number, top: number, w: number, h: number, fillColor: string): Group {
   const seed = positionSeed(left, top, w, h);
   const fillLight = hexToRgba(fillColor, 0.35);
-  // Generate at origin so Group position is predictable
   const drawable = gen().rectangle(0, 0, w, h, {
     ...ROUGH_OPTS,
+    stroke: fillColor,
     fill: fillLight,
     seed,
   });
-  const objects = drawableToFabricObjects(drawable, fillLight);
+  const objects = drawableToFabricObjects(drawable, fillLight, fillColor);
   return new Group(objects, { left, top, originX: "left", originY: "top", selectable: true, hasControls: true });
 }
 
 export function userRoughEllipse(left: number, top: number, w: number, h: number, fillColor: string): Group {
   const seed = positionSeed(left, top, w, h);
   const fillLight = hexToRgba(fillColor, 0.35);
-  // Generate at origin so Group position is predictable
   const drawable = gen().ellipse(w / 2, h / 2, w, h, {
     ...ROUGH_OPTS,
+    stroke: fillColor,
     fill: fillLight,
     seed,
   });
-  const objects = drawableToFabricObjects(drawable, fillLight);
+  const objects = drawableToFabricObjects(drawable, fillLight, fillColor);
   return new Group(objects, { left, top, originX: "left", originY: "top", selectable: true, hasControls: true });
 }
 

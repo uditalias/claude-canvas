@@ -6,6 +6,8 @@ import {
   Ellipse,
   Line as FabricLine,
   IText,
+  Path,
+  Group,
   FabricObject,
 } from "fabric";
 import type { ToolType } from "./useToolState";
@@ -14,6 +16,7 @@ import {
   userRoughEllipse,
   userRoughLine,
   userRoughArrow,
+  hexToRgba,
 } from "../lib/wobble";
 
 interface UseDrawingToolsOptions {
@@ -136,6 +139,43 @@ export function useDrawingTools({
 
       const pointer = canvas.getScenePoint(opt.e as MouseEvent);
       mouseDownPosRef.current = { x: pointer.x, y: pointer.y };
+
+      // Paint tool: recolor the clicked object
+      if (activeTool === "paint") {
+        const pointer = canvas.getScenePoint(opt.e as MouseEvent);
+        const objects = canvas.getObjects().filter(o => isUserLayer(o));
+        let hit: FabricObject | null = null;
+        for (let i = objects.length - 1; i >= 0; i--) {
+          if (objects[i].containsPoint(pointer)) {
+            hit = objects[i];
+            break;
+          }
+        }
+        if (hit) {
+          if (hit instanceof IText) {
+            hit.set({ fill: color });
+          } else if (hit instanceof Path) {
+            hit.set({ stroke: color });
+          } else if (hit instanceof Group) {
+            const fillLight = hexToRgba(color, 0.35);
+            const children = hit.getObjects();
+            for (const child of children) {
+              if (child instanceof Path) {
+                const currentStroke = child.stroke as string;
+                // Hachure fill paths have lighter/transparent strokes
+                if (currentStroke && (currentStroke.startsWith("rgba") || currentStroke === "transparent")) {
+                  child.set({ stroke: fillLight });
+                } else {
+                  // Outline stroke
+                  child.set({ stroke: color });
+                }
+              }
+            }
+          }
+          canvas.requestRenderAll();
+        }
+        return;
+      }
 
       // If clicking on a user object while a non-pointer tool is active:
       // DON'T draw, DON'T switch tool yet — just let Fabric handle the drag.

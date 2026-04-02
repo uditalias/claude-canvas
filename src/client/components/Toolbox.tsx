@@ -7,6 +7,7 @@ import {
   MoveRight,
   Minus,
   Type,
+  PaintBucket,
   Palette,
 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
@@ -32,6 +33,7 @@ const SHAPE_TOOLS: { type: ToolType; icon: React.ElementType; label: string }[] 
 
 const OTHER_TOOLS: { type: ToolType; icon: React.ElementType; label: string }[] = [
   { type: "text", icon: Type, label: "Text" },
+  { type: "paint", icon: PaintBucket, label: "Paint" },
 ];
 
 function getShortcutForTool(tool: ToolType): string {

@@ -8,7 +8,8 @@ export type ToolType =
   | "circle"
   | "arrow"
   | "line"
-  | "text";
+  | "text"
+  | "paint";
 
 export const TOOL_SHORTCUTS: Record<string, ToolType> = {
   v: "pointer",
@@ -19,6 +20,7 @@ export const TOOL_SHORTCUTS: Record<string, ToolType> = {
   a: "arrow",
   l: "line",
   t: "text",
+  b: "paint",
 };
 
 export const COLOR_PRESETS = [
