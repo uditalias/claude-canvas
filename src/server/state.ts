@@ -1,8 +1,9 @@
 import * as WebSocket from "ws";
+import type { Answer } from "../protocol/types.js";
 
 interface ServerState {
   clients: Set<WebSocket.WebSocket>;
-  pendingScreenshot: ((data: string) => void) | null;
+  pendingScreenshot: ((data: { image: string; answers: Answer[] }) => void) | null;
 }
 
 const state: ServerState = {
@@ -18,25 +19,27 @@ export function removeClient(ws: WebSocket.WebSocket): void {
   state.clients.delete(ws);
 }
 
-export function broadcastDraw(payload: unknown): void {
-  const msg = JSON.stringify({ type: "draw", payload });
+function broadcast(msg: string): void {
   for (const client of state.clients) {
     if (client.readyState === WebSocket.WebSocket.OPEN) {
       client.send(msg);
     }
   }
+}
+
+export function broadcastDraw(payload: unknown): void {
+  broadcast(JSON.stringify({ type: "draw", payload }));
+}
+
+export function broadcastAsk(payload: unknown): void {
+  broadcast(JSON.stringify({ type: "ask", payload }));
 }
 
 export function broadcastClear(layer?: string): void {
-  const msg = JSON.stringify({ type: "clear", payload: layer || null });
-  for (const client of state.clients) {
-    if (client.readyState === WebSocket.WebSocket.OPEN) {
-      client.send(msg);
-    }
-  }
+  broadcast(JSON.stringify({ type: "clear", payload: layer || null }));
 }
 
-export function requestScreenshot(): Promise<string> {
+export function requestScreenshot(): Promise<{ image: string; answers: Answer[] }> {
   return new Promise((resolve, reject) => {
     const clients = [...state.clients].filter(
       (c) => c.readyState === WebSocket.WebSocket.OPEN
@@ -49,7 +52,7 @@ export function requestScreenshot(): Promise<string> {
       reject(new Error("Screenshot timeout — browser did not respond"));
     }, 10000);
 
-    state.pendingScreenshot = (data: string) => {
+    state.pendingScreenshot = (data: { image: string; answers: Answer[] }) => {
       clearTimeout(timeout);
       state.pendingScreenshot = null;
       resolve(data);
@@ -60,7 +63,7 @@ export function requestScreenshot(): Promise<string> {
   });
 }
 
-export function resolveScreenshot(data: string): void {
+export function resolveScreenshot(data: { image: string; answers: Answer[] }): void {
   if (state.pendingScreenshot) {
     state.pendingScreenshot(data);
   }

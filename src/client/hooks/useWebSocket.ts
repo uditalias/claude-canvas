@@ -18,7 +18,7 @@ export function useWebSocket({ onMessage }: UseWebSocketOptions) {
       if (disposed) return;
 
       const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-      const ws = new WebSocket(`${protocol}//${location.host}`);
+      const ws = new WebSocket(`${protocol}//${location.host}/ws`);
       wsRef.current = ws;
 
       ws.onopen = () => {

@@ -12,7 +12,11 @@ export function attachWebSocket(server: http.Server): WebSocket.WebSocketServer 
       try {
         const msg = JSON.parse(raw.toString());
         if (msg.type === "screenshot_response" && msg.payload) {
-          resolveScreenshot(msg.payload as string);
+          if (typeof msg.payload === "string") {
+            resolveScreenshot({ image: msg.payload, answers: [] });
+          } else {
+            resolveScreenshot(msg.payload);
+          }
         }
       } catch {
         // ignore malformed messages

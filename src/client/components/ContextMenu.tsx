@@ -24,6 +24,7 @@ export interface CanvasContextMenuContentProps {
   opacity: number;
   locked: boolean;
   filled?: boolean;
+  label?: string;
   textOptions?: TextOptions;
   onBringToFront: () => void;
   onSendToBack: () => void;
@@ -34,6 +35,7 @@ export interface CanvasContextMenuContentProps {
   onTextChange?: (opts: Partial<TextOptions>) => void;
   onColorChange?: (color: string) => void;
   onToggleFill?: () => void;
+  onEditLabel?: () => void;
   onDelete: () => void;
 }
 
@@ -42,9 +44,9 @@ const OPACITY_PRESETS = [100, 75, 50, 25, 10];
 
 export function CanvasContextMenuContent(props: CanvasContextMenuContentProps) {
   const {
-    opacity, locked, filled, textOptions,
+    opacity, locked, filled, label, textOptions,
     onBringToFront, onSendToBack, onDuplicate, onOpacityChange,
-    onToggleLock, onCenterOnCanvas, onTextChange, onColorChange, onToggleFill, onDelete,
+    onToggleLock, onCenterOnCanvas, onTextChange, onColorChange, onToggleFill, onEditLabel, onDelete,
   } = props;
 
   return (
@@ -55,6 +57,11 @@ export function CanvasContextMenuContent(props: CanvasContextMenuContentProps) {
         <DropdownMenuItem onSelect={onDuplicate}>Duplicate</DropdownMenuItem>
         <DropdownMenuItem onSelect={onToggleLock}>{locked ? "Unlock" : "Lock"}</DropdownMenuItem>
         <DropdownMenuItem onSelect={onCenterOnCanvas}>Center on canvas</DropdownMenuItem>
+        {onEditLabel && (
+          <DropdownMenuItem onSelect={onEditLabel}>
+            {label ? "Edit label" : "Add label"}
+          </DropdownMenuItem>
+        )}
       </DropdownMenuGroup>
 
       {textOptions && onTextChange && (

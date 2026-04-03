@@ -21,7 +21,7 @@ export default defineConfig({
       "/api": "http://127.0.0.1:7890",
       "/health": "http://127.0.0.1:7890",
       "/ws": {
-        target: "ws://127.0.0.1:7890",
+        target: "http://127.0.0.1:7890",
         ws: true,
       },
     },

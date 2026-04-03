@@ -1,1 +1,1 @@
-export type { DrawCommand, DrawPayload, WsMessage } from "../../protocol/types";
+export type { DrawCommand, DrawPayload, WsMessage, Question, Answer, ScreenshotResponsePayload, AskPayload } from "../../protocol/types";

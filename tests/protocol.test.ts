@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { DrawPayload, DrawCommand } from "../src/protocol/types.js";
+import type { DrawPayload, DrawCommand, Question } from "../src/protocol/types.js";
 
 describe("DrawPayload", () => {
   it("accepts a rect command", () => {
@@ -26,5 +26,30 @@ describe("DrawPayload", () => {
       commands: [{ type: "circle", x: 100, y: 100, radius: 40 }],
     };
     expect(payload.narration).toBe("Drawing a box");
+  });
+
+  it("accepts a draw payload with a question", () => {
+    const question: Question = {
+      id: "q1",
+      text: "Which color do you prefer?",
+      type: "single",
+      options: ["Red", "Green", "Blue"],
+    };
+    const payload: DrawPayload = {
+      commands: [{ type: "rect", x: 0, y: 0, width: 50, height: 50 }],
+      question,
+    };
+    expect(payload.question).toBeDefined();
+    expect(payload.question!.id).toBe("q1");
+    expect(payload.question!.text).toBe("Which color do you prefer?");
+    expect(payload.question!.type).toBe("single");
+    expect(payload.question!.options).toHaveLength(3);
+  });
+
+  it("accepts a draw payload without a question (backward compat)", () => {
+    const payload: DrawPayload = {
+      commands: [{ type: "text", x: 10, y: 10, content: "Hello" }],
+    };
+    expect(payload.question).toBeUndefined();
   });
 });

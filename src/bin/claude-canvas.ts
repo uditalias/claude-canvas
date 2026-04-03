@@ -90,6 +90,30 @@ program
     console.log(JSON.stringify(res));
   });
 
+// ── ask ─────────────────────────────────────────────────────────────────────
+program
+  .command("ask")
+  .description("Send visual questions to the user")
+  .argument("<json>", "AskPayload JSON string or - to read from stdin")
+  .action(async (json: string) => {
+    const session = requireSession();
+    let body: string;
+    if (json === "-") {
+      body = await readStdin();
+    } else {
+      body = json;
+    }
+    let payload: Record<string, unknown>;
+    try {
+      payload = JSON.parse(body) as Record<string, unknown>;
+    } catch {
+      console.error("Invalid JSON");
+      process.exit(1);
+    }
+    const res = await httpPost(`http://127.0.0.1:${session.port}/api/ask`, payload);
+    console.log(JSON.stringify(res));
+  });
+
 // ── clear ───────────────────────────────────────────────────────────────────
 program
   .command("clear")
@@ -112,7 +136,7 @@ program
     const session = requireSession();
     const res = await httpGet(`http://127.0.0.1:${session.port}/api/screenshot`);
     if (res.path) {
-      console.log(res.path);
+      console.log(JSON.stringify(res));
     } else {
       console.error("Screenshot failed:", res.error);
       process.exit(1);

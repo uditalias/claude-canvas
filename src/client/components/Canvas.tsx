@@ -9,7 +9,8 @@ import { Hud, ZoomControls } from "./Hud";
 import { Narration, NarrationHandle } from "./Narration";
 import { CanvasContextMenuContent } from "./ContextMenu";
 import { DropdownMenu, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import type { WsMessage, DrawPayload } from "../lib/protocol";
+import type { WsMessage, DrawPayload, AskPayload, Question, Answer } from "../lib/protocol";
+import type { QuestionState } from "../hooks/useQuestionPanel";
 import type { ToolState } from "../hooks/useToolState";
 import { type ResolvedTheme, type ThemeMode, THEME } from "../hooks/useTheme";
 import { FabricObject, Group, IText, Path, Point } from "fabric";
@@ -19,13 +20,17 @@ import { hexToRgba } from "../lib/wobble";
 interface CanvasViewProps {
   toolState: ToolState;
   theme: { mode: ThemeMode; resolved: ResolvedTheme; setThemeMode: (m: ThemeMode) => void };
+  onAskBatch?: (questions: { question: Question; canvasJson: object }[]) => void;
+  getAllAnswers?: () => Answer[];
+  getQuestionsState?: () => QuestionState[];
+  onCanvasReady?: (getCanvas: () => import("fabric").Canvas | null) => void;
 }
 
 function isUserLayer(obj: FabricObject): boolean {
   return (obj as unknown as { data?: { layer?: string } }).data?.layer === "user";
 }
 
-export function CanvasView({ toolState, theme }: CanvasViewProps) {
+export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQuestionsState, onCanvasReady }: CanvasViewProps) {
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const narrationRef = useRef<NarrationHandle>(null);
@@ -35,8 +40,19 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
   activeToolRef.current = toolState.activeTool;
 
   const themeColors = THEME[theme.resolved];
-  const { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom } =
+  const { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onLabelsUpdate } =
     useCanvas(canvasElRef, containerRef, activeToolRef, themeColors);
+
+  // ── Shape labels (rendered as DOM, positioned from after:render) ────────
+  const [shapeLabels, setShapeLabels] = useState<{ text: string; x: number; y: number }[]>([]);
+  useEffect(() => {
+    onLabelsUpdate(setShapeLabels);
+  }, [onLabelsUpdate]);
+
+  // Expose getCanvas to parent
+  useEffect(() => {
+    onCanvasReady?.(getCanvas);
+  }, [getCanvas, onCanvasReady]);
 
   useDrawingTools({
     getCanvas,
@@ -111,6 +127,62 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [undo, redo, getCanvas]);
+
+  // ── Inline label editor ───────────────────────────────────────────────────
+  const [labelEdit, setLabelEdit] = useState<{
+    target: FabricObject;
+    x: number;
+    y: number;
+    value: string;
+  } | null>(null);
+
+  const startLabelEdit = (obj: FabricObject) => {
+    const canvas = getCanvas();
+    if (!canvas) return;
+    const bounds = obj.getBoundingRect();
+    const vpt = canvas.viewportTransform;
+    const zoom = vpt[0];
+    const panX = vpt[4];
+    const panY = vpt[5];
+    const x = bounds.left * zoom + panX + (bounds.width * zoom) / 2;
+    const y = bounds.top * zoom + panY - 20;
+    const currentLabel = (obj as any).data?.label ?? "";
+    setLabelEdit({ target: obj, x, y, value: currentLabel });
+  };
+
+  const commitLabelEdit = () => {
+    if (!labelEdit) return;
+    const canvas = getCanvas();
+    if (!canvas) return;
+    const trimmed = labelEdit.value.trim();
+    if (!(labelEdit.target as any).data) (labelEdit.target as any).data = {};
+    if (trimmed) {
+      (labelEdit.target as any).data.label = trimmed;
+    } else {
+      delete (labelEdit.target as any).data.label;
+    }
+    canvas.requestRenderAll();
+    setLabelEdit(null);
+  };
+
+  // Double-click to edit label on user shapes
+  useEffect(() => {
+    const canvas = getCanvas();
+    if (!canvas) return;
+
+    const onDblClick = (opt: { target?: FabricObject }) => {
+      if (!opt.target) return;
+      if (!isUserLayer(opt.target)) return;
+      // Don't intercept IText double-click (that's for text editing)
+      if (opt.target instanceof IText) return;
+      startLabelEdit(opt.target);
+    };
+
+    canvas.on("mouse:dblclick", onDblClick as any);
+    return () => {
+      canvas.off("mouse:dblclick", onDblClick as any);
+    };
+  }, [getCanvas]);
 
   // ── Lock indicator for selected locked objects ───────────────────────────
   const [lockPos, setLockPos] = useState<{ x: number; y: number } | null>(null);
@@ -191,16 +263,81 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
 
   const target = contextTargetRef.current;
 
+  const getAllAnswersRef = useRef(getAllAnswers);
+  getAllAnswersRef.current = getAllAnswers;
+  const getQuestionsStateRef = useRef(getQuestionsState);
+  getQuestionsStateRef.current = getQuestionsState;
+
+  const handleScreenshotRequest = async () => {
+    const canvas = getCanvas();
+    if (!canvas) return;
+
+    const mainImage = takeScreenshot();
+
+    if (!getAllAnswersRef.current || !getQuestionsStateRef.current) {
+      sendRef.current?.({ type: "screenshot_response", payload: { image: mainImage, answers: [] } });
+      return;
+    }
+
+    const answers = getAllAnswersRef.current();
+    const questionsState = getQuestionsStateRef.current();
+    const processedAnswers: Answer[] = [];
+
+    // Save current canvas state
+    const currentJson = canvas.toJSON();
+
+    for (const a of answers) {
+      const qs = questionsState.find((q) => q.question.id === a.questionId);
+      if (qs && qs.question.type === "canvas") {
+        await canvas.loadFromJSON(qs.canvasJson);
+        canvas.requestRenderAll();
+        const snapshot = takeScreenshot();
+        processedAnswers.push({ ...a, canvasSnapshot: snapshot });
+      } else {
+        processedAnswers.push(a);
+      }
+    }
+
+    // Restore original canvas
+    await canvas.loadFromJSON(currentJson);
+    canvas.requestRenderAll();
+
+    sendRef.current?.({
+      type: "screenshot_response",
+      payload: { image: mainImage, answers: processedAnswers },
+    });
+  };
+
   const handleMessage = useCallback(
     (msg: WsMessage) => {
       if (msg.type === "draw") {
         const payload = msg.payload as DrawPayload;
-        if (payload?.narration) {
-          narrationRef.current?.animateText(payload.narration);
-        }
+        if (payload?.narration) narrationRef.current?.animateText(payload.narration);
         if (payload?.commands) {
           const added = renderCommands(payload.commands);
           autopan(added);
+        }
+      } else if (msg.type === "ask") {
+        const askPayload = msg.payload as AskPayload;
+        if (askPayload?.questions && onAskBatch) {
+          const canvas = getCanvas();
+          if (!canvas) return;
+          const batch: { question: Question; canvasJson: object }[] = [];
+          for (const q of askPayload.questions) {
+            clear();
+            if (q.commands) renderCommands(q.commands);
+            // Make all objects interactive for Q&A
+            canvas.forEachObject((obj) => {
+              obj.set({ selectable: true, evented: true });
+            });
+            canvas.requestRenderAll();
+            batch.push({ question: q, canvasJson: canvas.toJSON() });
+          }
+          // Restore Q1's canvas
+          if (batch.length > 0) {
+            canvas.loadFromJSON(batch[0].canvasJson).then(() => canvas.requestRenderAll());
+          }
+          onAskBatch(batch);
         }
       } else if (msg.type === "clear") {
         const layer = msg.payload as string | null;
@@ -210,11 +347,10 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
           clear();
         }
       } else if (msg.type === "screenshot_request") {
-        const dataUrl = takeScreenshot();
-        sendRef.current?.({ type: "screenshot_response", payload: dataUrl });
+        void handleScreenshotRequest();
       }
     },
-    [renderCommands, clear, clearLayer, takeScreenshot, autopan]
+    [renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, getAllAnswers, getQuestionsState, onAskBatch]
   );
 
   const { send } = useWebSocket({ onMessage: handleMessage });
@@ -239,6 +375,36 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
         </div>
       )}
 
+      {shapeLabels.filter((lbl) => !labelEdit || Math.abs(lbl.x - labelEdit.x) > 1 || Math.abs(lbl.y - labelEdit.y) > 1).map((lbl) => (
+        <div
+          key={`${lbl.text}-${lbl.x.toFixed(0)}-${lbl.y.toFixed(0)}`}
+          className="absolute pointer-events-none text-sm font-medium -translate-x-1/2"
+          style={{
+            left: lbl.x,
+            top: lbl.y,
+            color: theme.resolved === "dark" ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)",
+          }}
+        >
+          {lbl.text}
+        </div>
+      ))}
+
+      {labelEdit && (
+        <input
+          autoFocus
+          className="absolute z-50 bg-transparent border-none text-sm font-medium text-center -translate-x-1/2 focus:outline-none caret-foreground"
+          style={{ left: labelEdit.x, top: labelEdit.y, minWidth: 60, color: theme.resolved === "dark" ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)" }}
+          value={labelEdit.value}
+          onChange={(e) => setLabelEdit({ ...labelEdit, value: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitLabelEdit();
+            if (e.key === "Escape") setLabelEdit(null);
+          }}
+          onBlur={commitLabelEdit}
+          placeholder="Label..."
+        />
+      )}
+
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
           <div
@@ -257,6 +423,7 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
           <CanvasContextMenuContent
             opacity={target.opacity ?? 1}
             locked={target.lockMovementX === true}
+            label={(target as any).data?.label ?? ""}
             filled={target instanceof Group ? target.getObjects().some(
               (c) => c instanceof Path && c.visible !== false && (c.stroke as string)?.startsWith("rgba")
             ) : undefined}
@@ -319,6 +486,10 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
               requestAnimationFrame(() => {
                 (target as Group).set("objectCaching", true);
               });
+            } : undefined}
+            onEditLabel={isUserLayer(target) && !(target instanceof IText) ? () => {
+              setMenuOpen(false);
+              startLabelEdit(target);
             } : undefined}
             onCenterOnCanvas={() => {
               const canvas = getCanvas();
