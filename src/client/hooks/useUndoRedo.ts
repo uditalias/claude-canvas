@@ -95,15 +95,22 @@ export function useUndoRedo({ getCanvas }: UseUndoRedoOptions) {
       saveSnapshot();
     }
 
+    const onAddedOrRemoved = (opt: { target: FabricObject }) => {
+      // Skip non-user objects (e.g. snap guide lines added/removed during moves)
+      if (!isUserLayer(opt.target)) return;
+      saveSnapshot();
+    };
+
+    // object:modified fires once when a transform (move/scale/rotate) ends
     const onModified = () => saveSnapshot();
 
-    canvas.on("object:added", onModified);
-    canvas.on("object:removed", onModified);
+    canvas.on("object:added", onAddedOrRemoved);
+    canvas.on("object:removed", onAddedOrRemoved);
     canvas.on("object:modified", onModified);
 
     return () => {
-      canvas.off("object:added", onModified);
-      canvas.off("object:removed", onModified);
+      canvas.off("object:added", onAddedOrRemoved);
+      canvas.off("object:removed", onAddedOrRemoved);
       canvas.off("object:modified", onModified);
     };
   }, [getCanvas, saveSnapshot]);

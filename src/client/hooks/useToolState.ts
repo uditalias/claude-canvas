@@ -28,15 +28,17 @@ export const TOOL_SHORTCUTS: Record<string, ToolType> = {
 export const COLOR_PRESETS = [
   "#000000", // Black
   "#555555", // Dark Gray
-  "#E03131", // Red
-  "#2563EB", // Blue
-  "#2B8A3E", // Green
-  "#E8590C", // Orange
-  "#7048E8", // Purple
-  "#B5651D", // Brown
+  "#D4726A", // Red
+  "#D9925E", // Orange
+  "#C4A73A", // Yellow
+  "#8AAD5A", // Green
+  "#6DBDAD", // Cyan
+  "#7198C9", // Blue
+  "#9B85B5", // Purple
+  "#D47C9A", // Magenta
 ];
 
-export const DEFAULT_COLOR = "#2563EB";
+export const DEFAULT_COLOR = "#7198C9";
 export const DEFAULT_BRUSH_SIZE = 2;
 
 export function useToolState() {
