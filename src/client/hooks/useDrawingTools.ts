@@ -4,7 +4,6 @@ import {
   PencilBrush,
   Rect,
   Ellipse,
-  Line as FabricLine,
   IText,
   Path,
   Group,
@@ -15,10 +14,9 @@ import type { ToolType } from "./useToolState";
 import {
   userRoughRect,
   userRoughEllipse,
-  userRoughLine,
-  userRoughArrow,
   hexToRgba,
 } from "../lib/wobble";
+import { RoughLineObject, RoughArrowObject } from "../lib/rough-line";
 
 interface UseDrawingToolsOptions {
   getCanvas: () => Canvas | null;
@@ -172,7 +170,9 @@ export function useDrawingTools({
           }
         }
         if (hit) {
-          if (hit instanceof IText) {
+          if (hit instanceof RoughLineObject || hit instanceof RoughArrowObject) {
+            (hit as RoughLineObject).strokeColor = color;
+          } else if (hit instanceof IText) {
             hit.set({ fill: color });
           } else if (hit instanceof Path) {
             hit.set({ stroke: color });
@@ -268,11 +268,17 @@ export function useDrawingTools({
         });
         ghostRef.current = ghost;
         canvas.add(ghost);
-      } else if (activeTool === "arrow" || activeTool === "line") {
-        const ghost = new FabricLine([pointer.x, pointer.y, pointer.x, pointer.y], {
-          stroke: color,
-          strokeWidth: 1,
-          strokeDashArray: [5, 5],
+      } else if (activeTool === "line") {
+        const ghost = new RoughLineObject([pointer.x, pointer.y, pointer.x, pointer.y], {
+          strokeColor: color,
+          selectable: false,
+          evented: false,
+        });
+        ghostRef.current = ghost;
+        canvas.add(ghost);
+      } else if (activeTool === "arrow") {
+        const ghost = new RoughArrowObject([pointer.x, pointer.y, pointer.x, pointer.y], {
+          strokeColor: color,
           selectable: false,
           evented: false,
         });
@@ -309,11 +315,10 @@ export function useDrawingTools({
         const top = Math.min(start.y, pointer.y);
         ghost.set({ left, top, rx: w / 2, ry: h / 2 });
       } else if (activeTool === "arrow" || activeTool === "line") {
-        const ghost = ghostRef.current as FabricLine;
+        const ghost = ghostRef.current as RoughLineObject;
         let x2 = pointer.x;
         let y2 = pointer.y;
         if (shiftKey) {
-          // Snap to nearest 45-degree angle
           const adx = Math.abs(x2 - start.x);
           const ady = Math.abs(y2 - start.y);
           const angle = Math.atan2(ady, adx);
@@ -323,6 +328,8 @@ export function useDrawingTools({
           y2 = start.y + Math.sin(snapped) * dist * Math.sign(y2 - start.y || 1);
         }
         ghost.set({ x2, y2 });
+        (ghost as any)._setWidthHeight();
+        ghost.setCoords();
       }
       canvas.requestRenderAll();
     };
@@ -367,52 +374,46 @@ export function useDrawingTools({
       const pointer = canvas.getScenePoint(opt.e as MouseEvent);
       const start = dragStartRef.current;
 
-      // Remove ghost
-      if (ghostRef.current) {
-        canvas.remove(ghostRef.current);
-        ghostRef.current = null;
-      }
-
       // Minimum drag distance
       const rawDx = pointer.x - start.x;
       const rawDy = pointer.y - start.y;
-      if (Math.abs(rawDx) < 5 && Math.abs(rawDy) < 5) return;
-
-      const shiftKey = (opt.e as MouseEvent).shiftKey;
-      let w = Math.abs(rawDx);
-      let h = Math.abs(rawDy);
-      if (shiftKey && (activeTool === "rect" || activeTool === "circle")) {
-        const s = Math.max(w, h); w = s; h = s;
-      }
-      const left = Math.min(start.x, pointer.x);
-      const top = Math.min(start.y, pointer.y);
-
-      if (activeTool === "rect") {
-        const shape = userRoughRect(left, top, w, h, color);
-        tagAsUser(shape);
-        canvas.add(shape);
-      } else if (activeTool === "circle") {
-        const shape = userRoughEllipse(left, top, w, h, color);
-        tagAsUser(shape);
-        canvas.add(shape);
-      } else if (activeTool === "line" || activeTool === "arrow") {
-        let x2 = pointer.x;
-        let y2 = pointer.y;
-        if (shiftKey) {
-          const adx = Math.abs(x2 - start.x);
-          const ady = Math.abs(y2 - start.y);
-          const dist = Math.sqrt(adx * adx + ady * ady);
-          const angle = Math.atan2(ady, adx);
-          const snapped = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
-          x2 = start.x + Math.cos(snapped) * dist * Math.sign(x2 - start.x || 1);
-          y2 = start.y + Math.sin(snapped) * dist * Math.sign(y2 - start.y || 1);
+      if (Math.abs(rawDx) < 5 && Math.abs(rawDy) < 5) {
+        // Too small — remove ghost
+        if (ghostRef.current) {
+          canvas.remove(ghostRef.current);
+          ghostRef.current = null;
         }
-        if (activeTool === "line") {
-          const shape = userRoughLine(start.x, start.y, x2, y2, color);
+        return;
+      }
+
+      // For lines/arrows, promote the ghost to the final object
+      if ((activeTool === "line" || activeTool === "arrow") && ghostRef.current) {
+        const shape = ghostRef.current as RoughLineObject;
+        shape.set({ selectable: true, evented: true });
+        tagAsUser(shape);
+        ghostRef.current = null;
+      } else {
+        // Remove ghost for rect/circle (they create a different final object)
+        if (ghostRef.current) {
+          canvas.remove(ghostRef.current);
+          ghostRef.current = null;
+        }
+
+        const shiftKey = (opt.e as MouseEvent).shiftKey;
+        let w = Math.abs(rawDx);
+        let h = Math.abs(rawDy);
+        if (shiftKey && (activeTool === "rect" || activeTool === "circle")) {
+          const s = Math.max(w, h); w = s; h = s;
+        }
+        const left = Math.min(start.x, pointer.x);
+        const top = Math.min(start.y, pointer.y);
+
+        if (activeTool === "rect") {
+          const shape = userRoughRect(left, top, w, h, color);
           tagAsUser(shape);
           canvas.add(shape);
-        } else {
-          const shape = userRoughArrow(start.x, start.y, x2, y2, color);
+        } else if (activeTool === "circle") {
+          const shape = userRoughEllipse(left, top, w, h, color);
           tagAsUser(shape);
           canvas.add(shape);
         }
