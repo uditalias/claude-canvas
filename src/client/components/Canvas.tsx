@@ -12,7 +12,9 @@ import { DropdownMenu, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import type { WsMessage, DrawPayload } from "../lib/protocol";
 import type { ToolState } from "../hooks/useToolState";
 import { type ResolvedTheme, type ThemeMode, THEME } from "../hooks/useTheme";
-import { FabricObject, Group, IText, Point } from "fabric";
+import { FabricObject, Group, IText, Path, Point } from "fabric";
+import { RoughLineObject, RoughArrowObject } from "../lib/rough-line";
+import { hexToRgba } from "../lib/wobble";
 
 interface CanvasViewProps {
   toolState: ToolState;
@@ -43,6 +45,7 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
     brushSize: toolState.brushSize,
     spaceDownRef,
     selectTool: toolState.selectTool,
+    resolvedTheme: theme.resolved,
   });
 
   const { undo, redo } = useUndoRedo({ getCanvas });
@@ -254,6 +257,9 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
           <CanvasContextMenuContent
             opacity={target.opacity ?? 1}
             locked={target.lockMovementX === true}
+            filled={target instanceof Group ? target.getObjects().some(
+              (c) => c instanceof Path && c.visible !== false && (c.stroke as string)?.startsWith("rgba")
+            ) : undefined}
             textOptions={target instanceof IText ? {
               fontSize: (target as IText).fontSize ?? 16,
               fontWeight: String((target as IText).fontWeight ?? "normal"),
@@ -267,6 +273,52 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
                 target.set(opts as any);
                 canvas.requestRenderAll();
               }
+            } : undefined}
+            onColorChange={(color) => {
+              const canvas = getCanvas();
+              if (!canvas || !target) return;
+              if (target instanceof RoughLineObject || target instanceof RoughArrowObject) {
+                (target as RoughLineObject).strokeColor = color;
+              } else if (target instanceof IText) {
+                target.set({ fill: color });
+              } else if (target instanceof Path) {
+                target.set({ stroke: color });
+              } else if (target instanceof Group) {
+                const fillLight = hexToRgba(color, 0.35);
+                for (const child of target.getObjects()) {
+                  if (child instanceof Path) {
+                    const s = child.stroke as string;
+                    if (s && (s.startsWith("rgba") || s === "transparent")) {
+                      child.set({ stroke: fillLight });
+                    } else {
+                      child.set({ stroke: color });
+                    }
+                  }
+                }
+              }
+              canvas.requestRenderAll();
+            }}
+            onToggleFill={target instanceof Group ? () => {
+              const canvas = getCanvas();
+              if (!canvas || !target) return;
+              const children = (target as Group).getObjects();
+              // Hachure fill paths have rgba strokes
+              const fillPaths = children.filter(
+                (c) => c instanceof Path && (c.stroke as string)?.startsWith("rgba")
+              );
+              if (fillPaths.length === 0) return;
+              const currentlyVisible = fillPaths.some((p) => p.visible !== false);
+              for (const p of fillPaths) {
+                p.visible = !currentlyVisible;
+                p.dirty = true;
+              }
+              (target as Group).set("objectCaching", false);
+              (target as Group).dirty = true;
+              canvas.requestRenderAll();
+              // Re-enable caching next frame
+              requestAnimationFrame(() => {
+                (target as Group).set("objectCaching", true);
+              });
             } : undefined}
             onCenterOnCanvas={() => {
               const canvas = getCanvas();

@@ -18,6 +18,14 @@ import {
 } from "../lib/wobble";
 import { RoughLineObject, RoughArrowObject } from "../lib/rough-line";
 
+// Paint bucket cursor using Lucide paint-bucket icon
+function makePaintCursor(strokeColor: string) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/></svg>`;
+  return `url("data:image/svg+xml;base64,${btoa(svg)}") 2 22, pointer`;
+}
+
+import type { ResolvedTheme } from "./useTheme";
+
 interface UseDrawingToolsOptions {
   getCanvas: () => Canvas | null;
   activeTool: ToolType;
@@ -25,6 +33,7 @@ interface UseDrawingToolsOptions {
   brushSize: number;
   spaceDownRef: React.RefObject<boolean>;
   selectTool: (tool: ToolType) => void;
+  resolvedTheme?: ResolvedTheme;
 }
 
 function isUserLayer(obj: FabricObject): boolean {
@@ -42,6 +51,7 @@ export function useDrawingTools({
   brushSize,
   spaceDownRef,
   selectTool,
+  resolvedTheme,
 }: UseDrawingToolsOptions) {
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
@@ -134,10 +144,13 @@ export function useDrawingTools({
 
     // Keep user objects always selectable/evented so we can detect clicks on them
     // Except in hand mode where we don't want objects to interfere with panning
+    const isPaint = activeTool === "paint";
+    const paintCursor = isPaint ? makePaintCursor(resolvedTheme === "dark" ? "white" : "black") : undefined;
     canvas.forEachObject((obj) => {
       if (isUserLayer(obj)) {
         obj.selectable = !isHand;
         obj.evented = !isHand;
+        obj.hoverCursor = paintCursor;
       }
     });
 
@@ -590,5 +603,5 @@ export function useDrawingTools({
         canvasEl.removeEventListener("drop", onDrop);
       }
     };
-  }, [getCanvas, activeTool, color, brushSize, spaceDownRef, selectTool]);
+  }, [getCanvas, activeTool, color, brushSize, spaceDownRef, selectTool, resolvedTheme]);
 }

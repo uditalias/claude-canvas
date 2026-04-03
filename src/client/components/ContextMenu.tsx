@@ -10,6 +10,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuGroup,
 } from "./ui/dropdown-menu";
+import { COLOR_PRESETS } from "../hooks/useToolState";
 
 interface TextOptions {
   fontSize: number;
@@ -22,6 +23,7 @@ interface TextOptions {
 export interface CanvasContextMenuContentProps {
   opacity: number;
   locked: boolean;
+  filled?: boolean;
   textOptions?: TextOptions;
   onBringToFront: () => void;
   onSendToBack: () => void;
@@ -30,6 +32,8 @@ export interface CanvasContextMenuContentProps {
   onToggleLock: () => void;
   onCenterOnCanvas: () => void;
   onTextChange?: (opts: Partial<TextOptions>) => void;
+  onColorChange?: (color: string) => void;
+  onToggleFill?: () => void;
   onDelete: () => void;
 }
 
@@ -38,9 +42,9 @@ const OPACITY_PRESETS = [100, 75, 50, 25, 10];
 
 export function CanvasContextMenuContent(props: CanvasContextMenuContentProps) {
   const {
-    opacity, locked, textOptions,
+    opacity, locked, filled, textOptions,
     onBringToFront, onSendToBack, onDuplicate, onOpacityChange,
-    onToggleLock, onCenterOnCanvas, onTextChange, onDelete,
+    onToggleLock, onCenterOnCanvas, onTextChange, onColorChange, onToggleFill, onDelete,
   } = props;
 
   return (
@@ -97,6 +101,36 @@ export function CanvasContextMenuContent(props: CanvasContextMenuContentProps) {
             Strikethrough
           </DropdownMenuCheckboxItem>
         </>
+      )}
+
+      {onColorChange && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>Color</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <div className="grid grid-cols-5 gap-1 p-1.5">
+                {COLOR_PRESETS.map((c) => (
+                  <button
+                    key={c}
+                    className="w-6 h-6 rounded-full border border-border hover:scale-110 transition-transform"
+                    style={{ backgroundColor: c }}
+                    onClick={() => onColorChange(c)}
+                  />
+                ))}
+              </div>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </>
+      )}
+
+      {onToggleFill && (
+        <DropdownMenuCheckboxItem
+          checked={filled}
+          onCheckedChange={() => onToggleFill()}
+        >
+          Fill
+        </DropdownMenuCheckboxItem>
       )}
 
       <DropdownMenuSeparator />
