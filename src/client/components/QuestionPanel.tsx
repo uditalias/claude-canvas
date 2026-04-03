@@ -144,7 +144,7 @@ export function QuestionPanel({
   };
 
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-4">
+    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-4 animate-in slide-in-from-bottom-4 fade-in duration-300">
       <div className="rounded-2xl border border-border bg-card/95 backdrop-blur-sm shadow-lg">
         {/* Question row */}
         <div className="flex items-center gap-3 px-5 py-3.5">

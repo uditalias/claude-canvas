@@ -13,6 +13,7 @@ export function useWebSocket({ onMessage }: UseWebSocketOptions) {
   useEffect(() => {
     let disposed = false;
     let reconnectTimer: ReturnType<typeof setTimeout>;
+    let reconnectDelay = 1000;
 
     function connect() {
       if (disposed) return;
@@ -22,6 +23,7 @@ export function useWebSocket({ onMessage }: UseWebSocketOptions) {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        reconnectDelay = 1000; // reset on successful connection
         window.dispatchEvent(
           new CustomEvent("ws-status", { detail: "connected" })
         );
@@ -32,7 +34,8 @@ export function useWebSocket({ onMessage }: UseWebSocketOptions) {
           new CustomEvent("ws-status", { detail: "disconnected" })
         );
         if (!disposed) {
-          reconnectTimer = setTimeout(connect, 2000);
+          reconnectTimer = setTimeout(connect, reconnectDelay);
+          reconnectDelay = Math.min(reconnectDelay * 2, 30000); // 1s, 2s, 4s, 8s... max 30s
         }
       };
 

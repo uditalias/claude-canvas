@@ -23,10 +23,13 @@ export function Hud() {
     >
       <span
         className={`inline-block w-1.5 h-1.5 rounded-full ${
-          status === "connected" ? "bg-green-500" : "bg-red-400"
+          status === "connected" ? "bg-green-500 animate-pulse" : "bg-red-400"
         }`}
       />
       <span className="text-foreground/70 font-medium tracking-wide">claude-canvas</span>
+      {status === "disconnected" && (
+        <span className="text-muted-foreground/60 ml-0.5">reconnecting...</span>
+      )}
     </div>
   );
 }

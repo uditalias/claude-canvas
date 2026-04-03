@@ -76,7 +76,7 @@ export function App() {
         </div>
       </div>
       {questionPanel.isDone && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="text-center">
             <p className="text-lg font-medium">Answers submitted</p>
             <p className="text-sm text-muted-foreground mt-1">You can close this tab</p>
