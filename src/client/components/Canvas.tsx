@@ -1,4 +1,5 @@
 import { useRef, useCallback, useState, useEffect } from "react";
+import { Lock } from "lucide-react";
 import { useCanvas } from "../hooks/useCanvas";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useDrawingTools } from "../hooks/useDrawingTools";
@@ -105,6 +106,43 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [undo, redo, getCanvas]);
 
+  // ── Lock indicator for selected locked objects ───────────────────────────
+  const [lockPos, setLockPos] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const canvas = getCanvas();
+    if (!canvas) return;
+
+    const updateLockPos = () => {
+      const active = canvas.getActiveObject();
+      if (!active || active.lockMovementX !== true) {
+        setLockPos(null);
+        return;
+      }
+      const bounds = active.getBoundingRect();
+      const vpt = canvas.viewportTransform;
+      const zoom = vpt[0];
+      const panX = vpt[4];
+      const panY = vpt[5];
+      setLockPos({
+        x: bounds.left * zoom + panX,
+        y: bounds.top * zoom + panY - 18,
+      });
+    };
+
+    canvas.on("selection:created", updateLockPos);
+    canvas.on("selection:updated", updateLockPos);
+    canvas.on("selection:cleared", () => setLockPos(null));
+    canvas.on("after:render", updateLockPos);
+
+    return () => {
+      canvas.off("selection:created", updateLockPos);
+      canvas.off("selection:updated", updateLockPos);
+      canvas.off("selection:cleared");
+      canvas.off("after:render", updateLockPos);
+    };
+  }, [getCanvas]);
+
   // ── Context menu state ───────────────────────────────────────────────────
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
@@ -189,6 +227,15 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
       >
         <canvas ref={canvasElRef} />
       </div>
+
+      {lockPos && (
+        <div
+          className="absolute pointer-events-none"
+          style={{ left: lockPos.x, top: lockPos.y }}
+        >
+          <Lock className="w-3.5 h-3.5" style={{ color: "rgba(178,204,255,0.8)" }} />
+        </div>
+      )}
 
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
