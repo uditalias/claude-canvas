@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
-import { Minus, Plus, Maximize, Download } from "lucide-react";
+import { Minus, Plus, Maximize, Download, Undo2, Redo2 } from "lucide-react";
 
 const POPPINS_STYLE = { fontFamily: "'Poppins', sans-serif" };
 
@@ -37,10 +37,12 @@ interface ZoomControlsProps {
   resetZoom: () => void;
   fitToScreen: () => void;
   getZoom: () => number;
+  onUndo?: () => void;
+  onRedo?: () => void;
   onExport?: () => void;
 }
 
-export function ZoomControls({ zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onExport }: ZoomControlsProps) {
+export function ZoomControls({ zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onUndo, onRedo, onExport }: ZoomControlsProps) {
   const [zoom, setZoom] = useState(100);
 
   useEffect(() => {
@@ -52,9 +54,34 @@ export function ZoomControls({ zoomIn, zoomOut, resetZoom, fitToScreen, getZoom,
 
   return (
     <div
-      className="fixed bottom-3 right-3 flex items-center gap-0 bg-background border border-border rounded-lg shadow-sm z-[100]"
+      className="fixed bottom-3 right-3 flex items-center gap-2 z-[100]"
       style={POPPINS_STYLE}
     >
+      {/* Undo/Redo */}
+      {(onUndo || onRedo) && (
+        <div className="flex items-center gap-0 bg-background border border-border rounded-lg shadow-sm">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={onUndo} className="rounded-r-none text-muted-foreground" aria-label="Undo">
+                <Undo2 className="w-3.5 h-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent style={POPPINS_STYLE}>Undo (⌘Z)</TooltipContent>
+          </Tooltip>
+          <div className="w-px h-5 bg-border" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={onRedo} className="rounded-l-none text-muted-foreground" aria-label="Redo">
+                <Redo2 className="w-3.5 h-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent style={POPPINS_STYLE}>Redo (⌘⇧Z)</TooltipContent>
+          </Tooltip>
+        </div>
+      )}
+
+      {/* Zoom controls */}
+      <div className="flex items-center gap-0 bg-background border border-border rounded-lg shadow-sm">
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -130,6 +157,7 @@ export function ZoomControls({ zoomIn, zoomOut, resetZoom, fitToScreen, getZoom,
           </Tooltip>
         </>
       )}
+      </div>
     </div>
   );
 }

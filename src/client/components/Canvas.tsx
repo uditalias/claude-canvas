@@ -6,7 +6,8 @@ import { useUndoRedo } from "../hooks/useUndoRedo";
 import { useSnapGuides } from "../hooks/useSnapGuides";
 import { Hud, ZoomControls } from "./Hud";
 import { Narration, NarrationHandle } from "./Narration";
-import { ContextMenu } from "./ContextMenu";
+import { CanvasContextMenuContent } from "./ContextMenu";
+import { DropdownMenu, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import type { WsMessage, DrawPayload } from "../lib/protocol";
 import type { ToolState } from "../hooks/useToolState";
 import type { ResolvedTheme, ThemeMode } from "../hooks/useTheme";
@@ -26,6 +27,7 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const narrationRef = useRef<NarrationHandle>(null);
   const sendRef = useRef<(msg: object) => void>(undefined);
+  const contextTargetRef = useRef<FabricObject | null>(null);
 
   const { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom } =
     useCanvas(canvasElRef, containerRef);
@@ -55,7 +57,6 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
         e.preventDefault();
         redo();
       } else if ((e.metaKey || e.ctrlKey) && e.key === "g" && !e.shiftKey) {
-        // Group
         e.preventDefault();
         const selected = canvas.getActiveObjects().filter(isUserLayer);
         if (selected.length < 2) return;
@@ -67,12 +68,9 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
         canvas.setActiveObject(group);
         canvas.requestRenderAll();
       } else if ((e.metaKey || e.ctrlKey) && e.key === "g" && e.shiftKey) {
-        // Ungroup
         e.preventDefault();
         const active = canvas.getActiveObject();
         if (!active || !(active instanceof Group) || !isUserLayer(active)) return;
-        // Only ungroup user-created groups (which contain other user-layer groups/objects)
-        // Don't ungroup rough.js shape groups (which contain raw Path objects)
         const children = active.getObjects();
         const hasUserChildren = children.some(c => (c as any).data?.layer === "user");
         if (!hasUserChildren) return;
@@ -85,7 +83,6 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
         canvas.discardActiveObject();
         canvas.requestRenderAll();
       } else if ((e.metaKey || e.ctrlKey) && e.key === "1") {
-        // Zoom to selection
         e.preventDefault();
         const active = canvas.getActiveObject();
         if (!active) return;
@@ -108,60 +105,47 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [undo, redo, getCanvas]);
 
-  // Fix #10: Right-click context menu state
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    target: FabricObject;
-  } | null>(null);
+  // ── Context menu state ───────────────────────────────────────────────────
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
 
+  // Listen for native contextmenu on the container (captures events from Fabric's upper canvas)
   useEffect(() => {
-    const canvas = getCanvas();
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    const onContextMenu = (e: Event) => {
+    const onContextMenu = (e: MouseEvent) => {
       e.preventDefault();
-    };
 
-    const upperCanvas = canvas.getSelectionElement();
-    if (upperCanvas) {
-      upperCanvas.addEventListener("contextmenu", onContextMenu);
-    }
+      const canvas = getCanvas();
+      if (!canvas) return;
 
-    const onMouseDown = (opt: { e: Event }) => {
-      const e = opt.e as MouseEvent;
-      if (e.button === 2) {
-        e.preventDefault();
-        const pointer = canvas.getScenePoint(e);
-        const objects = canvas.getObjects().filter(o => isUserLayer(o));
-        let hit: FabricObject | null = null;
-        for (let i = objects.length - 1; i >= 0; i--) {
-          if (objects[i].containsPoint(pointer)) {
-            hit = objects[i];
-            break;
-          }
-        }
-        if (hit) {
-          setContextMenu({
-            x: e.clientX,
-            y: e.clientY,
-            target: hit,
-          });
-        } else {
-          setContextMenu(null);
+      const pointer = canvas.getScenePoint(e);
+      const objects = canvas.getObjects().filter(o => isUserLayer(o));
+      let hit: FabricObject | null = null;
+      for (let i = objects.length - 1; i >= 0; i--) {
+        if (objects[i].containsPoint(pointer)) {
+          hit = objects[i];
+          break;
         }
       }
-    };
 
-    canvas.on("mouse:down", onMouseDown as any);
-
-    return () => {
-      canvas.off("mouse:down", onMouseDown as any);
-      if (upperCanvas) {
-        upperCanvas.removeEventListener("contextmenu", onContextMenu);
+      if (!hit) {
+        contextTargetRef.current = null;
+        setMenuOpen(false);
+        return;
       }
+
+      contextTargetRef.current = hit;
+      setMenuPos({ x: e.clientX, y: e.clientY });
+      setMenuOpen(true);
     };
+
+    container.addEventListener("contextmenu", onContextMenu);
+    return () => container.removeEventListener("contextmenu", onContextMenu);
   }, [getCanvas]);
+
+  const target = contextTargetRef.current;
 
   const handleMessage = useCallback(
     (msg: WsMessage) => {
@@ -205,6 +189,120 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
       >
         <canvas ref={canvasElRef} />
       </div>
+
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <div
+            style={{
+              position: "fixed",
+              left: menuPos.x,
+              top: menuPos.y,
+              width: 0,
+              height: 0,
+              pointerEvents: "none",
+            }}
+          />
+        </DropdownMenuTrigger>
+
+        {menuOpen && target && (
+          <CanvasContextMenuContent
+            opacity={target.opacity ?? 1}
+            locked={target.lockMovementX === true}
+            textOptions={target instanceof IText ? {
+              fontSize: (target as IText).fontSize ?? 16,
+              fontWeight: String((target as IText).fontWeight ?? "normal"),
+              fontStyle: String((target as IText).fontStyle ?? "normal"),
+              underline: (target as IText).underline ?? false,
+              linethrough: (target as IText).linethrough ?? false,
+            } : undefined}
+            onTextChange={target instanceof IText ? (opts) => {
+              const canvas = getCanvas();
+              if (canvas && target) {
+                target.set(opts as any);
+                canvas.requestRenderAll();
+              }
+            } : undefined}
+            onCenterOnCanvas={() => {
+              const canvas = getCanvas();
+              if (canvas && target) {
+                const cw = canvas.width ?? 800;
+                const ch = canvas.height ?? 600;
+                const bounds = target.getBoundingRect();
+                target.set({
+                  left: (target.left ?? 0) + (cw / 2 - (bounds.left + bounds.width / 2)),
+                  top: (target.top ?? 0) + (ch / 2 - (bounds.top + bounds.height / 2)),
+                });
+                target.setCoords();
+                canvas.requestRenderAll();
+              }
+            }}
+            onToggleLock={() => {
+              const canvas = getCanvas();
+              if (canvas && target) {
+                const isLocked = target.lockMovementX === true;
+                target.set({
+                  lockMovementX: !isLocked,
+                  lockMovementY: !isLocked,
+                  lockRotation: !isLocked,
+                  lockScalingX: !isLocked,
+                  lockScalingY: !isLocked,
+                  hasControls: isLocked,
+                });
+                canvas.requestRenderAll();
+              }
+            }}
+            onOpacityChange={(val) => {
+              const canvas = getCanvas();
+              if (canvas && target) {
+                target.set({ opacity: val });
+                canvas.requestRenderAll();
+              }
+            }}
+            onBringToFront={() => {
+              const canvas = getCanvas();
+              if (canvas && target) {
+                if (typeof canvas.bringObjectToFront === "function") {
+                  canvas.bringObjectToFront(target);
+                }
+                canvas.requestRenderAll();
+              }
+            }}
+            onDuplicate={() => {
+              const canvas = getCanvas();
+              if (canvas && target) {
+                target.clone().then((cloned: FabricObject) => {
+                  cloned.set({
+                    left: (cloned.left ?? 0) + 10,
+                    top: (cloned.top ?? 0) + 10,
+                  });
+                  (cloned as any).data = { layer: "user" };
+                  canvas.add(cloned);
+                  canvas.setActiveObject(cloned);
+                  canvas.requestRenderAll();
+                });
+              }
+            }}
+            onDelete={() => {
+              const canvas = getCanvas();
+              if (canvas && target) {
+                canvas.remove(target);
+                canvas.discardActiveObject();
+                canvas.requestRenderAll();
+              }
+            }}
+            onSendToBack={() => {
+              const canvas = getCanvas();
+              if (canvas && target) {
+                if (typeof canvas.sendObjectToBack === "function") {
+                  canvas.sendObjectToBack(target);
+                }
+                canvas.requestRenderAll();
+              }
+            }}
+          />
+        )}
+      </DropdownMenu>
+
       <Hud />
       <Narration ref={narrationRef} />
       <ZoomControls
@@ -213,6 +311,8 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
         resetZoom={resetZoom}
         fitToScreen={fitToScreen}
         getZoom={getZoom}
+        onUndo={undo}
+        onRedo={redo}
         onExport={() => {
           const dataUrl = takeScreenshot();
           if (dataUrl) {
@@ -223,97 +323,6 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
           }
         }}
       />
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          opacity={contextMenu.target.opacity ?? 1}
-          locked={contextMenu.target.lockMovementX === true}
-          textOptions={contextMenu.target instanceof IText ? {
-            fontSize: (contextMenu.target as IText).fontSize ?? 16,
-            fontWeight: String((contextMenu.target as IText).fontWeight ?? "normal"),
-            fontStyle: String((contextMenu.target as IText).fontStyle ?? "normal"),
-            underline: (contextMenu.target as IText).underline ?? false,
-            linethrough: (contextMenu.target as IText).linethrough ?? false,
-          } : undefined}
-          onTextChange={contextMenu.target instanceof IText ? (opts) => {
-            const canvas = getCanvas();
-            if (canvas && contextMenu.target) {
-              contextMenu.target.set(opts as any);
-              canvas.requestRenderAll();
-            }
-          } : undefined}
-          onToggleLock={() => {
-            const canvas = getCanvas();
-            if (canvas && contextMenu.target) {
-              const isLocked = contextMenu.target.lockMovementX === true;
-              contextMenu.target.set({
-                lockMovementX: !isLocked,
-                lockMovementY: !isLocked,
-                lockRotation: !isLocked,
-                lockScalingX: !isLocked,
-                lockScalingY: !isLocked,
-                hasControls: isLocked,
-              });
-              canvas.requestRenderAll();
-            }
-          }}
-          onOpacityChange={(val) => {
-            const canvas = getCanvas();
-            if (canvas && contextMenu.target) {
-              contextMenu.target.set({ opacity: val });
-              canvas.requestRenderAll();
-            }
-          }}
-          onBringToFront={() => {
-            const canvas = getCanvas();
-            if (canvas && contextMenu.target) {
-              // Fabric.js 7: bringObjectToFront on canvas
-              if (typeof canvas.bringObjectToFront === "function") {
-                canvas.bringObjectToFront(contextMenu.target);
-              } else if (typeof (contextMenu.target as any).bringToFront === "function") {
-                (contextMenu.target as any).bringToFront();
-              }
-              canvas.requestRenderAll();
-            }
-          }}
-          onDuplicate={() => {
-            const canvas = getCanvas();
-            if (canvas && contextMenu.target) {
-              contextMenu.target.clone().then((cloned: FabricObject) => {
-                cloned.set({
-                  left: (cloned.left ?? 0) + 10,
-                  top: (cloned.top ?? 0) + 10,
-                });
-                (cloned as any).data = { layer: "user" };
-                canvas.add(cloned);
-                canvas.setActiveObject(cloned);
-                canvas.requestRenderAll();
-              });
-            }
-          }}
-          onDelete={() => {
-            const canvas = getCanvas();
-            if (canvas && contextMenu.target) {
-              canvas.remove(contextMenu.target);
-              canvas.discardActiveObject();
-              canvas.requestRenderAll();
-            }
-          }}
-          onSendToBack={() => {
-            const canvas = getCanvas();
-            if (canvas && contextMenu.target) {
-              if (typeof canvas.sendObjectToBack === "function") {
-                canvas.sendObjectToBack(contextMenu.target);
-              } else if (typeof (contextMenu.target as any).sendToBack === "function") {
-                (contextMenu.target as any).sendToBack();
-              }
-              canvas.requestRenderAll();
-            }
-          }}
-          onClose={() => setContextMenu(null)}
-        />
-      )}
     </>
   );
 }

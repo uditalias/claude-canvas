@@ -38,6 +38,8 @@ export function useCanvas(
       height: h,
       backgroundColor: "transparent",
       selection: true,
+      stopContextMenu: false,
+      fireRightClick: true,
     });
     fabricRef.current = canvas;
 

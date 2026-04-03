@@ -8,6 +8,7 @@ import {
   IText,
   Path,
   Group,
+  FabricImage,
   FabricObject,
 } from "fabric";
 import type { ToolType } from "./useToolState";
@@ -115,16 +116,17 @@ export function useDrawingTools({
       if (!canvas.freeDrawingBrush) {
         canvas.freeDrawingBrush = new PencilBrush(canvas);
       }
-      const brush = canvas.freeDrawingBrush;
+      const brush = canvas.freeDrawingBrush as PencilBrush;
       brush.color = color;
+      brush.decimate = 4; // smoothing - simplify paths
 
       if (activeTool === "pencil") {
         brush.width = brushSize;
-        (brush as PencilBrush).opacity = 1;
+        brush.opacity = 1;
       } else if (activeTool === "marker") {
         brush.color = "rgba(255, 230, 0, 0.4)";
         brush.width = 16;
-        (brush as PencilBrush).opacity = 1;
+        brush.opacity = 1;
       }
     }
 
@@ -483,6 +485,64 @@ export function useDrawingTools({
       }
     };
 
+    // Helper: load a File/Blob as a data URL and add to canvas
+    const addImageToCanvas = (file: File | Blob, left: number, top: number) => {
+      const canvas = getCanvas();
+      if (!canvas) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        const img = new Image();
+        img.onload = () => {
+          const fImg = new FabricImage(img, {
+            left,
+            top,
+            originX: "left",
+            originY: "top",
+          });
+          tagAsUser(fImg);
+          canvas.add(fImg);
+          canvas.setActiveObject(fImg);
+          canvas.requestRenderAll();
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    // Image paste from clipboard
+    const onPaste = (e: ClipboardEvent) => {
+      const canvas = getCanvas();
+      if (!canvas) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (!blob) continue;
+          addImageToCanvas(blob, (canvas.width ?? 800) / 2, (canvas.height ?? 600) / 2);
+          break;
+        }
+      }
+    };
+
+    // Image drag-and-drop
+    const canvasEl = canvas.getSelectionElement();
+    const onDragOver = (e: DragEvent) => { e.preventDefault(); };
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault();
+      const canvas = getCanvas();
+      if (!canvas) return;
+      const files = e.dataTransfer?.files;
+      if (!files) return;
+      for (const file of files) {
+        if (!file.type.startsWith("image/")) continue;
+        const pointer = canvas.getScenePoint(e);
+        addImageToCanvas(file, pointer.x, pointer.y);
+      }
+    };
+
     // For freehand tools: intercept mouse:down before Fabric starts drawing
     // If on a user object, temporarily disable drawing mode so Fabric handles drag instead
     const onMouseDownBefore = (opt: { e: Event; target?: FabricObject }) => {
@@ -503,6 +563,11 @@ export function useDrawingTools({
     }
 
     document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("paste", onPaste);
+    if (canvasEl) {
+      canvasEl.addEventListener("dragover", onDragOver);
+      canvasEl.addEventListener("drop", onDrop);
+    }
 
     return () => {
       canvas.off("mouse:down:before" as any, onMouseDownBefore);
@@ -513,6 +578,11 @@ export function useDrawingTools({
         canvas.off("path:created" as any, onPathCreated);
       }
       document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("paste", onPaste);
+      if (canvasEl) {
+        canvasEl.removeEventListener("dragover", onDragOver);
+        canvasEl.removeEventListener("drop", onDrop);
+      }
     };
   }, [getCanvas, activeTool, color, brushSize, spaceDownRef, selectTool]);
 }
