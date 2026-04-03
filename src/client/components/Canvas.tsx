@@ -11,7 +11,7 @@ import { CanvasContextMenuContent } from "./ContextMenu";
 import { DropdownMenu, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import type { WsMessage, DrawPayload } from "../lib/protocol";
 import type { ToolState } from "../hooks/useToolState";
-import type { ResolvedTheme, ThemeMode } from "../hooks/useTheme";
+import { type ResolvedTheme, type ThemeMode, THEME } from "../hooks/useTheme";
 import { FabricObject, Group, IText, Point } from "fabric";
 
 interface CanvasViewProps {
@@ -32,8 +32,9 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
   const activeToolRef = useRef(toolState.activeTool);
   activeToolRef.current = toolState.activeTool;
 
+  const themeColors = THEME[theme.resolved];
   const { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom } =
-    useCanvas(canvasElRef, containerRef, activeToolRef);
+    useCanvas(canvasElRef, containerRef, activeToolRef, themeColors);
 
   useDrawingTools({
     getCanvas,
@@ -221,11 +222,7 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
       <div
         ref={containerRef}
         className="absolute inset-0"
-        style={{
-          backgroundColor: theme.resolved === "dark" ? "#1a1a1e" : "#FAFAF7",
-          backgroundImage: `radial-gradient(circle, ${theme.resolved === "dark" ? "#333338" : "#d4d4d4"} 0.75px, transparent 0.75px)`,
-          backgroundSize: "20px 20px",
-        }}
+        style={{ backgroundColor: themeColors.canvasBg }}
       >
         <canvas ref={canvasElRef} />
       </div>

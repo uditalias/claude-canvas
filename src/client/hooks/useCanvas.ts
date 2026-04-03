@@ -14,12 +14,20 @@ import {
   FONT_FAMILY,
 } from "../lib/wobble";
 
+interface CanvasTheme {
+  canvasBg: string;
+  dotColor: string;
+}
+
 export function useCanvas(
   canvasElRef: React.RefObject<HTMLCanvasElement | null>,
   containerRef: React.RefObject<HTMLDivElement | null>,
-  activeToolRef?: React.RefObject<string>
+  activeToolRef?: React.RefObject<string>,
+  theme?: CanvasTheme
 ) {
   const fabricRef = useRef<Canvas | null>(null);
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
   const spaceDownRef = useRef(false);
   const isPanningRef = useRef(false);
   const lastPanRef = useRef({ x: 0, y: 0 });
@@ -114,6 +122,53 @@ export function useCanvas(
     };
     window.addEventListener("resize", onResize);
 
+    // ── Dot grid background (renders with viewport transform) ─────────
+    const DOT_SPACING = 20;
+    const DOT_RADIUS = 0.75;
+
+    canvas.on("before:render", () => {
+      const ctx = canvas.getContext("2d");
+      const vpt = canvas.viewportTransform;
+      const zoom = vpt[0];
+      const panX = vpt[4];
+      const panY = vpt[5];
+
+      const bg = themeRef.current?.canvasBg ?? "#FAFAF7";
+      const dot = themeRef.current?.dotColor ?? "#d4d4d4";
+
+      // Fill background in screen space
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+      ctx.restore();
+
+      // Calculate visible area in world coordinates
+      const startX = Math.floor(-panX / zoom / DOT_SPACING) * DOT_SPACING;
+      const startY = Math.floor(-panY / zoom / DOT_SPACING) * DOT_SPACING;
+      const endX = Math.ceil((canvas.getWidth() - panX) / zoom / DOT_SPACING) * DOT_SPACING;
+      const endY = Math.ceil((canvas.getHeight() - panY) / zoom / DOT_SPACING) * DOT_SPACING;
+
+      // Draw dots in world space (transformed by viewport)
+      ctx.save();
+      ctx.transform(vpt[0], vpt[1], vpt[2], vpt[3], vpt[4], vpt[5]);
+      ctx.fillStyle = dot;
+
+      const scaledRadius = DOT_RADIUS / zoom;
+      const minRadius = DOT_RADIUS * 0.5;
+      const maxRadius = DOT_RADIUS * 2;
+      const radius = Math.min(maxRadius, Math.max(minRadius, scaledRadius));
+
+      for (let x = startX; x <= endX; x += DOT_SPACING) {
+        for (let y = startY; y <= endY; y += DOT_SPACING) {
+          ctx.beginPath();
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    });
+
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("keyup", onKeyUp);
@@ -122,6 +177,11 @@ export function useCanvas(
       fabricRef.current = null;
     };
   }, [canvasElRef, containerRef]);
+
+  // Re-render canvas when theme changes
+  useEffect(() => {
+    fabricRef.current?.requestRenderAll();
+  }, [theme]);
 
   const getCanvas = useCallback((): Canvas | null => {
     return fabricRef.current;
@@ -176,20 +236,15 @@ export function useCanvas(
     const canvas = fabricRef.current;
     if (!canvas) return;
     canvas.clear();
-    canvas.backgroundColor = "#FAFAF7";
+    canvas.backgroundColor = "transparent";
     canvas.renderAll();
   }, []);
 
   const takeScreenshot = useCallback((): string => {
     const canvas = fabricRef.current;
     if (!canvas) return "";
-    // Temporarily set white background for export
-    const prevBg = canvas.backgroundColor;
-    canvas.backgroundColor = "#FAFAF7";
-    canvas.renderAll();
+    // The after:render handler draws the background, so just export directly
     const dataUrl = canvas.toDataURL({ format: "png", multiplier: 1 });
-    canvas.backgroundColor = prevBg;
-    canvas.renderAll();
     return dataUrl;
   }, []);
 
