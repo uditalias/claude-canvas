@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 
 export type ToolType =
   | "pointer"
+  | "hand"
   | "pencil"
   | "marker"
   | "rect"
@@ -13,6 +14,7 @@ export type ToolType =
 
 export const TOOL_SHORTCUTS: Record<string, ToolType> = {
   v: "pointer",
+  h: "hand",
   p: "pencil",
   m: "marker",
   r: "rect",

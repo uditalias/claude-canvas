@@ -76,6 +76,7 @@ export function useDrawingTools({
     const isDrawingTool = activeTool === "pencil" || activeTool === "marker";
     const isShapeTool = activeTool === "rect" || activeTool === "circle" || activeTool === "arrow" || activeTool === "line";
     const isPointer = activeTool === "pointer";
+    const isHand = activeTool === "hand";
 
     // Reset state
     canvas.isDrawingMode = false;
@@ -86,6 +87,9 @@ export function useDrawingTools({
     // Cursor hints per tool
     if (isPointer) {
       canvas.defaultCursor = "default";
+    } else if (isHand) {
+      canvas.defaultCursor = "grab";
+      canvas.selection = false;
     } else if (isDrawingTool) {
       canvas.defaultCursor = "crosshair";
     } else if (isShapeTool) {
@@ -131,10 +135,11 @@ export function useDrawingTools({
     }
 
     // Keep user objects always selectable/evented so we can detect clicks on them
+    // Except in hand mode where we don't want objects to interfere with panning
     canvas.forEachObject((obj) => {
       if (isUserLayer(obj)) {
-        obj.selectable = true;
-        obj.evented = true;
+        obj.selectable = !isHand;
+        obj.evented = !isHand;
       }
     });
 

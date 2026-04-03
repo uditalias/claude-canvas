@@ -29,9 +29,11 @@ export function CanvasView({ toolState, theme }: CanvasViewProps) {
   const narrationRef = useRef<NarrationHandle>(null);
   const sendRef = useRef<(msg: object) => void>(undefined);
   const contextTargetRef = useRef<FabricObject | null>(null);
+  const activeToolRef = useRef(toolState.activeTool);
+  activeToolRef.current = toolState.activeTool;
 
   const { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom } =
-    useCanvas(canvasElRef, containerRef);
+    useCanvas(canvasElRef, containerRef, activeToolRef);
 
   useDrawingTools({
     getCanvas,

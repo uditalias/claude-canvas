@@ -1,5 +1,6 @@
 import {
   MousePointer2,
+  Hand,
   Pencil,
   Highlighter,
   Square,
@@ -25,6 +26,7 @@ const POPPINS_STYLE = { fontFamily: "'Poppins', sans-serif" };
 
 const DRAWING_TOOLS: { type: ToolType; icon: React.ElementType; label: string }[] = [
   { type: "pointer", icon: MousePointer2, label: "Pointer" },
+  { type: "hand", icon: Hand, label: "Hand" },
   { type: "pencil", icon: Pencil, label: "Pencil" },
   { type: "marker", icon: Highlighter, label: "Marker" },
 ];

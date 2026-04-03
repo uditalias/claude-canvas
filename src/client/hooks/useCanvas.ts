@@ -16,7 +16,8 @@ import {
 
 export function useCanvas(
   canvasElRef: React.RefObject<HTMLCanvasElement | null>,
-  containerRef: React.RefObject<HTMLDivElement | null>
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  activeToolRef?: React.RefObject<string>
 ) {
   const fabricRef = useRef<Canvas | null>(null);
   const spaceDownRef = useRef(false);
@@ -75,7 +76,8 @@ export function useCanvas(
 
     canvas.on("mouse:down", (opt) => {
       const e = opt.e as MouseEvent;
-      if (spaceDownRef.current || e.button === 1) {
+      const isHand = activeToolRef?.current === "hand";
+      if (spaceDownRef.current || e.button === 1 || (isHand && e.button === 0)) {
         isPanningRef.current = true;
         lastPanRef.current = { x: e.clientX, y: e.clientY };
         canvas.defaultCursor = "grabbing";
@@ -97,7 +99,8 @@ export function useCanvas(
     canvas.on("mouse:up", () => {
       if (isPanningRef.current) {
         isPanningRef.current = false;
-        canvas.defaultCursor = spaceDownRef.current ? "grab" : "default";
+        const isHand = activeToolRef?.current === "hand";
+        canvas.defaultCursor = (spaceDownRef.current || isHand) ? "grab" : "default";
       }
     });
 
