@@ -4,9 +4,11 @@ import * as http from "http";
 import { findAvailablePort } from "../utils/port.js";
 import { openBrowser } from "../utils/open-browser.js";
 import {
-  readSession,
   writeSession,
   clearSession,
+  listAliveSessions,
+  resolveSession,
+  generateSessionId,
   isAlive,
   spawnServer,
 } from "../server/process.js";
@@ -20,43 +22,55 @@ program
   .description("Start the canvas server and open the browser")
   .option("-p, --port <port>", "preferred port", "7890")
   .action(async (opts) => {
-    const existing = readSession();
-    if (existing && isAlive(existing.pid)) {
-      console.log(`Canvas already running at http://127.0.0.1:${existing.port} (PID ${existing.pid})`);
-      await openBrowser(`http://127.0.0.1:${existing.port}`);
-      return;
-    }
-
     const port = await findAvailablePort(parseInt(opts.port, 10));
     const child = spawnServer(port);
     const pid = child.pid!;
-    writeSession({ pid, port });
+    const sessionId = generateSessionId();
+    const createdAt = new Date().toISOString();
+    writeSession(sessionId, { pid, port, createdAt });
 
     // Wait briefly for the server to be ready
     await waitForServer(port, 5000);
-    console.log(`Canvas started at http://127.0.0.1:${port} (PID ${pid})`);
-    await openBrowser(`http://127.0.0.1:${port}`);
+    const url = `http://127.0.0.1:${port}`;
+    console.log(JSON.stringify({ sessionId, port, url, pid }));
+    await openBrowser(url);
   });
 
 // ── stop ────────────────────────────────────────────────────────────────────
 program
   .command("stop")
   .description("Stop the canvas server")
-  .action(() => {
-    const session = readSession();
-    if (!session) {
-      console.log("No canvas session found.");
+  .option("-s, --session <id>", "Session ID")
+  .option("--all", "Stop all running sessions")
+  .action((opts: { session?: string; all?: boolean }) => {
+    if (opts.all) {
+      const alive = listAliveSessions();
+      if (alive.length === 0) {
+        console.log("No canvas sessions running.");
+        return;
+      }
+      for (const { id, session } of alive) {
+        try {
+          process.kill(session.pid, "SIGTERM");
+          clearSession(id);
+          console.log(`Stopped session ${id} (PID ${session.pid}).`);
+        } catch (err) {
+          console.error(`Failed to stop session ${id}:`, (err as Error).message);
+        }
+      }
       return;
     }
+
+    const { id, session } = resolveSession(opts.session);
     if (!isAlive(session.pid)) {
-      console.log("Server is not running. Cleaning up session.");
-      clearSession();
+      console.log(`Session ${id} is not running. Cleaning up.`);
+      clearSession(id);
       return;
     }
     try {
       process.kill(session.pid, "SIGTERM");
-      clearSession();
-      console.log(`Canvas server (PID ${session.pid}) stopped.`);
+      clearSession(id);
+      console.log(`Canvas server session ${id} (PID ${session.pid}) stopped.`);
     } catch (err) {
       console.error("Failed to stop server:", (err as Error).message);
     }
@@ -68,8 +82,9 @@ program
   .description("Send draw commands to the canvas")
   .argument("<json>", "DrawPayload JSON string or - to read from stdin")
   .option("--no-animate", "Render shapes instantly without animation")
-  .action(async (json: string, opts: { animate: boolean }) => {
-    const session = requireSession();
+  .option("-s, --session <id>", "Session ID")
+  .action(async (json: string, opts: { animate: boolean; session?: string }) => {
+    const { session } = resolveSession(opts.session);
     let body: string;
     if (json === "-") {
       body = await readStdin();
@@ -95,8 +110,9 @@ program
   .command("ask")
   .description("Send visual questions to the user")
   .argument("<json>", "AskPayload JSON string or - to read from stdin")
-  .action(async (json: string) => {
-    const session = requireSession();
+  .option("-s, --session <id>", "Session ID")
+  .action(async (json: string, opts: { session?: string }) => {
+    const { session } = resolveSession(opts.session);
     let body: string;
     if (json === "-") {
       body = await readStdin();
@@ -119,8 +135,9 @@ program
   .command("clear")
   .description("Clear the canvas")
   .option("-l, --layer <layer>", "Clear only shapes on this layer (e.g. claude)")
-  .action(async (opts: { layer?: string }) => {
-    const session = requireSession();
+  .option("-s, --session <id>", "Session ID")
+  .action(async (opts: { layer?: string; session?: string }) => {
+    const { session } = resolveSession(opts.session);
     const url = opts.layer
       ? `http://127.0.0.1:${session.port}/api/clear?layer=${opts.layer}`
       : `http://127.0.0.1:${session.port}/api/clear`;
@@ -132,8 +149,9 @@ program
 program
   .command("screenshot")
   .description("Capture the canvas as a PNG")
-  .action(async () => {
-    const session = requireSession();
+  .option("-s, --session <id>", "Session ID")
+  .action(async (opts: { session?: string }) => {
+    const { session } = resolveSession(opts.session);
     const res = await httpGet(`http://127.0.0.1:${session.port}/api/screenshot`);
     if (res.path) {
       console.log(JSON.stringify(res));
@@ -149,8 +167,9 @@ program
   .description("Export the canvas as PNG, SVG, or JSON")
   .option("-f, --format <format>", "Export format: png, svg, or json", "png")
   .option("--labels", "Include shape labels in export", false)
-  .action(async (opts: { format: string; labels: boolean }) => {
-    const session = requireSession();
+  .option("-s, --session <id>", "Session ID")
+  .action(async (opts: { format: string; labels: boolean; session?: string }) => {
+    const { session } = resolveSession(opts.session);
     const url = `http://127.0.0.1:${session.port}/api/export?format=${opts.format}&labels=${opts.labels}`;
     const res = await httpGet(url);
     if (res.path) {
@@ -164,15 +183,6 @@ program
 program.parse();
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-
-function requireSession() {
-  const session = readSession();
-  if (!session || !isAlive(session.pid)) {
-    console.error("Canvas server is not running. Start it with: claude-canvas start");
-    process.exit(1);
-  }
-  return session;
-}
 
 function httpGet(url: string): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
