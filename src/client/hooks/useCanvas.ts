@@ -174,6 +174,15 @@ export function useCanvas(
       ctx.restore();
     });
 
+    // ── Dynamic connector re-routing when groups move ──────────────
+    canvas.on("object:moving", (opt: { target: FabricObject }) => {
+      const groupId = (opt.target as any).data?.groupId as string | undefined;
+      if (groupId) {
+        updateConnectorsForGroup(canvas, groupId);
+        canvas.requestRenderAll();
+      }
+    });
+
     // ── Labels: collect label positions for React rendering ─────────
     canvas.on("after:render", () => {
       const vpt = canvas.viewportTransform;
@@ -465,6 +474,14 @@ export function useCanvas(
         if (childCommands.length > 0) {
           commands.push({ type: "group", id: groupId, commands: childCommands });
         }
+      } else if (shapeType === "connector") {
+        const fromId = (data as any)?.fromId as string | undefined;
+        const toId = (data as any)?.toId as string | undefined;
+        if (fromId && toId) {
+          const cmd: any = { type: "connector", from: fromId, to: toId };
+          if (label) cmd.label = label;
+          commands.push(cmd);
+        }
       }
     }
 
@@ -618,6 +635,72 @@ function resolveFillStyle(cmd: { fill?: boolean; fillStyle?: string }): string {
   return "hachure";
 }
 
+// ── Connector helpers ────────────────────────────────────────────────────
+
+/** Find the intersection of a line (from center1 to center2) with a bounding rect */
+function edgePoint(cx: number, cy: number, rect: { left: number; top: number; width: number; height: number }, targetX: number, targetY: number): { x: number; y: number } {
+  const dx = targetX - cx;
+  const dy = targetY - cy;
+  if (dx === 0 && dy === 0) return { x: cx, y: cy };
+
+  const hw = rect.width / 2;
+  const hh = rect.height / 2;
+
+  // Check intersection with each edge, pick closest
+  let t = Infinity;
+  if (dx !== 0) {
+    const tRight = hw / Math.abs(dx);
+    const tLeft = hw / Math.abs(dx);
+    const tX = dx > 0 ? tRight : tLeft;
+    if (Math.abs(dy * tX) <= hh) t = Math.min(t, tX);
+  }
+  if (dy !== 0) {
+    const tBottom = hh / Math.abs(dy);
+    const tTop = hh / Math.abs(dy);
+    const tY = dy > 0 ? tBottom : tTop;
+    if (Math.abs(dx * tY) <= hw) t = Math.min(t, tY);
+  }
+  if (!isFinite(t)) t = 0;
+  return { x: cx + dx * t, y: cy + dy * t };
+}
+
+function findGroupById(canvas: Canvas, id: string): FabricObject | undefined {
+  return canvas.getObjects().find((o) => (o as any).data?.groupId === id);
+}
+
+/** Update all connectors that reference a given group ID */
+function updateConnectorsForGroup(canvas: Canvas, groupId: string): void {
+  for (const obj of canvas.getObjects()) {
+    const d = (obj as any).data;
+    if (d?.shapeType !== "connector") continue;
+    if (d.fromId !== groupId && d.toId !== groupId) continue;
+
+    const fromObj = findGroupById(canvas, d.fromId);
+    const toObj = findGroupById(canvas, d.toId);
+    if (!fromObj || !toObj) continue;
+
+    const fromBr = fromObj.getBoundingRect();
+    const toBr = toObj.getBoundingRect();
+    const fromCx = fromBr.left + fromBr.width / 2;
+    const fromCy = fromBr.top + fromBr.height / 2;
+    const toCx = toBr.left + toBr.width / 2;
+    const toCy = toBr.top + toBr.height / 2;
+
+    const p1 = edgePoint(fromCx, fromCy, fromBr, toCx, toCy);
+    const p2 = edgePoint(toCx, toCy, toBr, fromCx, fromCy);
+
+    if (obj instanceof RoughArrowObject) {
+      obj.x1 = p1.x;
+      obj.y1 = p1.y;
+      obj.x2 = p2.x;
+      obj.y2 = p2.y;
+      (obj as any)._setWidthHeight();
+      obj.setCoords();
+      obj.dirty = true;
+    }
+  }
+}
+
 // ── Render commands (standalone, supports recursion for groups) ───────────
 function renderCommandsToCanvas(
   canvas: Canvas,
@@ -736,14 +819,41 @@ function renderCommandsToCanvas(
         const tempCanvas = { _objects: [] as FabricObject[], add(o: FabricObject) { this._objects.push(o); } } as unknown as Canvas;
         const groupChildren = renderCommandsToCanvas(tempCanvas, cmd.commands);
         // Wrap in a Fabric Group
-        const group = new Group(groupChildren, { selectable: false, evented: false });
+        const group = new Group(groupChildren, { selectable: true, evented: true, hasControls: false });
         group.set({ data: { layer: "claude", shapeType: "group", groupId: cmd.id } });
         canvas.add(group);
         added.push(group);
         break;
       }
-      case "connector":
+      case "connector": {
+        const fromObj = findGroupById(canvas, cmd.from);
+        const toObj = findGroupById(canvas, cmd.to);
+        if (!fromObj || !toObj) break;
+
+        const fromBr = fromObj.getBoundingRect();
+        const toBr = toObj.getBoundingRect();
+        const fromCx = fromBr.left + fromBr.width / 2;
+        const fromCy = fromBr.top + fromBr.height / 2;
+        const toCx = toBr.left + toBr.width / 2;
+        const toCy = toBr.top + toBr.height / 2;
+
+        const p1 = edgePoint(fromCx, fromCy, fromBr, toCx, toCy);
+        const p2 = edgePoint(toCx, toCy, toBr, fromCx, fromCy);
+
+        const arrow = new RoughArrowObject([p1.x, p1.y, p2.x, p2.y], {
+          strokeColor: FILL_COLOR,
+          roughness: 1.5,
+        });
+        arrow.set({
+          selectable: false,
+          evented: false,
+          data: { layer: "claude", shapeType: "connector", fromId: cmd.from, toId: cmd.to },
+        });
+        if (cmd.label) (arrow as any).data.label = cmd.label;
+        canvas.add(arrow);
+        added.push(arrow);
         break;
+      }
     }
   }
 
