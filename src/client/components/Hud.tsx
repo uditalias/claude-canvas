@@ -52,9 +52,10 @@ interface ZoomControlsProps {
   onRedo?: () => void;
   onExportPNG?: (includeLabels: boolean) => void;
   onExportSVG?: (includeLabels: boolean) => void;
+  onExportJSON?: () => void;
 }
 
-export function ZoomControls({ zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onUndo, onRedo, onExportPNG, onExportSVG }: ZoomControlsProps) {
+export function ZoomControls({ zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onUndo, onRedo, onExportPNG, onExportSVG, onExportJSON }: ZoomControlsProps) {
   const [zoom, setZoom] = useState(100);
   const [includeLabels, setIncludeLabels] = useState(false);
 
@@ -151,7 +152,7 @@ export function ZoomControls({ zoomIn, zoomOut, resetZoom, fitToScreen, getZoom,
         </TooltipTrigger>
         <TooltipContent style={POPPINS_STYLE}>Fit to screen</TooltipContent>
       </Tooltip>
-      {(onExportPNG || onExportSVG) && (
+      {(onExportPNG || onExportSVG || onExportJSON) && (
         <>
           <div className="w-px h-5 bg-border" />
           <DropdownMenu>
@@ -174,6 +175,11 @@ export function ZoomControls({ zoomIn, zoomOut, resetZoom, fitToScreen, getZoom,
               {onExportSVG && (
                 <DropdownMenuItem onSelect={() => onExportSVG(includeLabels)}>
                   Export SVG
+                </DropdownMenuItem>
+              )}
+              {onExportJSON && (
+                <DropdownMenuItem onSelect={() => onExportJSON()}>
+                  Export JSON
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />

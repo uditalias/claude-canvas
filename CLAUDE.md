@@ -95,10 +95,11 @@ claude-canvas ask -                    # Read AskPayload from stdin
 All shapes support `label?: string` (floating text above the shape).
 
 ```typescript
-// Shapes (fill defaults to true; set fill: false for wireframes)
-{ type: "rect", x, y, width, height, label?, fill? }
-{ type: "circle", x, y, radius, label?, fill? }
-{ type: "ellipse", x, y, width, height, label?, fill? }
+// Shapes (fillStyle defaults to "hachure"; set fillStyle: "none" for wireframes)
+// fillStyle: "hachure" | "solid" | "zigzag" | "cross-hatch" | "dots" | "dashed" | "zigzag-line" | "none"
+{ type: "rect", x, y, width, height, label?, fillStyle? }
+{ type: "circle", x, y, radius, label?, fillStyle? }
+{ type: "ellipse", x, y, width, height, label?, fillStyle? }
 
 // Lines
 { type: "line", x1, y1, x2, y2, label? }

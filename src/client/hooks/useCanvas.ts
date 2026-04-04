@@ -1,16 +1,19 @@
 import { useEffect, useRef, useCallback } from "react";
 import { Canvas, Path, FabricText, FabricObject, Group, Point } from "fabric";
 import type { DrawCommand } from "../lib/protocol";
+import { RoughLineObject, RoughArrowObject } from "../lib/rough-line";
 import {
   wobbleRect,
   wobbleCircle,
   wobbleEllipse,
   wobbleLine,
   wobbleArrow,
+  hexToRgba,
   STROKE_COLOR,
   FILL_COLOR,
   STROKE_WIDTH,
   FONT_FAMILY,
+  removeFillFromGroup,
 } from "../lib/wobble";
 
 interface CanvasTheme {
@@ -330,6 +333,114 @@ export function useCanvas(
     return dataUrl;
   }, []);
 
+  const exportJSON = useCallback((): string => {
+    const canvas = fabricRef.current;
+    if (!canvas) return "[]";
+    const commands: DrawCommand[] = [];
+
+    for (const obj of canvas.getObjects()) {
+      const data = (obj as any).data as {
+        layer?: string; shapeType?: string; label?: string;
+      } | undefined;
+      const shapeType = data?.shapeType;
+      const label = data?.label as string | undefined;
+      const opacity = obj.opacity !== undefined && obj.opacity !== 1 ? obj.opacity : undefined;
+
+      // Extract color from object based on its type
+      const color = getObjectColor(obj);
+
+      // Read fillStyle from data (default is hachure)
+      const fillStyle = (data as any)?.fillStyle as string | undefined;
+
+      if (shapeType === "rect") {
+        const br = obj.getBoundingRect();
+        const cmd: any = { type: "rect", x: Math.round(br.left), y: Math.round(br.top), width: Math.round(br.width), height: Math.round(br.height) };
+        if (label) cmd.label = label;
+        if (fillStyle && fillStyle !== "hachure") cmd.fillStyle = fillStyle;
+        if (color) cmd.color = color;
+        if (opacity !== undefined) cmd.opacity = opacity;
+        commands.push(cmd);
+      } else if (shapeType === "circle") {
+        const br = obj.getBoundingRect();
+        const r = Math.round(Math.min(br.width, br.height) / 2);
+        const cmd: any = { type: "circle", x: Math.round(br.left + br.width / 2), y: Math.round(br.top + br.height / 2), radius: r };
+        if (label) cmd.label = label;
+        if (fillStyle && fillStyle !== "hachure") cmd.fillStyle = fillStyle;
+        if (color) cmd.color = color;
+        if (opacity !== undefined) cmd.opacity = opacity;
+        commands.push(cmd);
+      } else if (shapeType === "ellipse") {
+        const br = obj.getBoundingRect();
+        const cmd: any = { type: "ellipse", x: Math.round(br.left), y: Math.round(br.top), width: Math.round(br.width), height: Math.round(br.height) };
+        if (label) cmd.label = label;
+        if (fillStyle && fillStyle !== "hachure") cmd.fillStyle = fillStyle;
+        if (color) cmd.color = color;
+        if (opacity !== undefined) cmd.opacity = opacity;
+        commands.push(cmd);
+      } else if (shapeType === "line" || shapeType === "arrow") {
+        let x1: number, y1: number, x2: number, y2: number;
+        if (obj instanceof RoughLineObject || obj instanceof RoughArrowObject) {
+          const pts = obj.calcLinePoints();
+          const matrix = obj.calcOwnMatrix();
+          const p1 = new Point(pts.x1, pts.y1).transform(matrix);
+          const p2 = new Point(pts.x2, pts.y2).transform(matrix);
+          x1 = Math.round(p1.x); y1 = Math.round(p1.y);
+          x2 = Math.round(p2.x); y2 = Math.round(p2.y);
+        } else {
+          // Group-based Claude line/arrow — use bounding rect as approximation
+          const br = obj.getBoundingRect();
+          x1 = Math.round(br.left); y1 = Math.round(br.top);
+          x2 = Math.round(br.left + br.width); y2 = Math.round(br.top + br.height);
+        }
+        const cmd: any = { type: shapeType, x1, y1, x2, y2 };
+        if (label) cmd.label = label;
+        if (color) cmd.color = color;
+        if (opacity !== undefined) cmd.opacity = opacity;
+        commands.push(cmd);
+      } else if (shapeType === "text") {
+        const textObj = obj as FabricText;
+        const align = (textObj.textAlign as "left" | "center" | "right") || "left";
+        const cmd: any = {
+          type: "text",
+          x: Math.round(textObj.left ?? 0),
+          y: Math.round(textObj.top ?? 0),
+          content: textObj.text ?? "",
+          fontSize: textObj.fontSize ?? 16,
+        };
+        if (align !== "left") cmd.textAlign = align;
+        if (textObj.fontWeight && textObj.fontWeight !== "normal") cmd.fontWeight = textObj.fontWeight;
+        if (textObj.fontStyle && textObj.fontStyle !== "normal") cmd.fontStyle = textObj.fontStyle;
+        if ((textObj as any).underline) cmd.underline = true;
+        if ((textObj as any).linethrough) cmd.linethrough = true;
+        if (color) cmd.color = color;
+        if (opacity !== undefined) cmd.opacity = opacity;
+        commands.push(cmd);
+      } else if (shapeType === "freehand" && obj instanceof Path) {
+        const pathData = (obj as any).path as Array<(string | number)[]>;
+        if (!pathData) continue;
+        const matrix = obj.calcOwnMatrix();
+        const points: [number, number][] = [];
+        for (const seg of pathData) {
+          if (seg[0] === "M" || seg[0] === "L") {
+            const p = new Point(seg[1] as number, seg[2] as number).transform(matrix);
+            points.push([Math.round(p.x), Math.round(p.y)]);
+          } else if (seg[0] === "Q") {
+            const p = new Point(seg[3] as number, seg[4] as number).transform(matrix);
+            points.push([Math.round(p.x), Math.round(p.y)]);
+          }
+        }
+        if (points.length >= 2) {
+          const cmd: any = { type: "freehand", points };
+          if (color) cmd.color = color;
+          if (opacity !== undefined) cmd.opacity = opacity;
+          commands.push(cmd);
+        }
+      }
+    }
+
+    return JSON.stringify({ commands }, null, 2);
+  }, []);
+
   const clearLayer = useCallback((layer: string) => {
     const canvas = fabricRef.current;
     if (!canvas) return;
@@ -412,29 +523,69 @@ export function useCanvas(
     labelsCallbackRef.current = cb;
   }, []);
 
-  return { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onLabelsUpdate, exportSVG, exportPNG };
+  return { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onLabelsUpdate, exportSVG, exportPNG, exportJSON };
 }
 
-function tagAsClaude(obj: FabricObject): void {
-  obj.set({
-    selectable: false,
-    evented: false,
-    data: { layer: "claude" },
-  });
-}
-
-function removeFill(shape: FabricObject): void {
-  if (shape instanceof Group) {
-    for (const child of shape.getObjects()) {
+/** Extract the primary color from a Fabric object */
+export function getObjectColor(obj: FabricObject): string | undefined {
+  if (obj instanceof RoughLineObject || obj instanceof RoughArrowObject) {
+    return (obj as RoughLineObject).strokeColor;
+  }
+  if (obj instanceof FabricText) {
+    return obj.fill as string || undefined;
+  }
+  if (obj instanceof Path) {
+    return obj.stroke as string || undefined;
+  }
+  if (obj instanceof Group) {
+    // Find the solid stroke color from child paths (not the rgba fill paths)
+    for (const child of obj.getObjects()) {
       if (child instanceof Path) {
         const s = child.stroke as string;
-        if (s && (s.startsWith("rgba") || s === "transparent")) {
-          child.visible = false;
+        if (s && !s.startsWith("rgba") && s !== "transparent") {
+          return s;
         }
       }
     }
-    shape.dirty = true;
   }
+  return undefined;
+}
+
+/** Apply a color to a Fabric object (mirrors context menu onColorChange logic) */
+export function applyColor(obj: FabricObject, color: string): void {
+  if (obj instanceof Group) {
+    const fillLight = hexToRgba(color, 0.35);
+    for (const child of obj.getObjects()) {
+      if (child instanceof Path) {
+        const s = child.stroke as string;
+        const f = child.fill as string;
+        if (s && (s.startsWith("rgba") || s === "transparent")) {
+          // Hachure/pattern fill path (color in stroke) or solid fill path (color in fill)
+          child.set({ stroke: fillLight });
+          if (f && f.startsWith("rgba")) {
+            child.set({ fill: fillLight });
+          }
+        } else {
+          child.set({ stroke: color });
+        }
+      }
+    }
+  }
+}
+
+function tagAsClaude(obj: FabricObject, shapeType: string, geo?: Record<string, unknown>): void {
+  obj.set({
+    selectable: false,
+    evented: false,
+    data: { layer: "claude", shapeType, ...(geo && { geo }) },
+  });
+}
+
+// Resolve fillStyle: explicit fillStyle wins, then legacy fill:false → "none", default "hachure"
+function resolveFillStyle(cmd: { fill?: boolean; fillStyle?: string }): string {
+  if (cmd.fillStyle) return cmd.fillStyle;
+  if (cmd.fill === false) return "none";
+  return "hachure";
 }
 
 // ── Render commands (standalone, supports recursion for groups) ───────────
@@ -447,44 +598,57 @@ function renderCommandsToCanvas(
   for (const cmd of commands) {
     switch (cmd.type) {
       case "rect": {
-        const shape = wobbleRect(cmd.x, cmd.y, cmd.width, cmd.height);
-        tagAsClaude(shape);
+        const fs = resolveFillStyle(cmd);
+        const shape = wobbleRect(cmd.x, cmd.y, cmd.width, cmd.height, fs);
+        tagAsClaude(shape, "rect", { x: cmd.x, y: cmd.y, width: cmd.width, height: cmd.height });
+        if (fs !== "hachure") (shape as any).data.fillStyle = fs;
         if (cmd.label) (shape as any).data.label = cmd.label;
-        if (cmd.fill === false) removeFill(shape);
+        if (cmd.color) applyColor(shape, cmd.color);
+        if (cmd.opacity !== undefined) shape.set({ opacity: cmd.opacity });
         canvas.add(shape);
         added.push(shape);
         break;
       }
       case "circle": {
-        const shape = wobbleCircle(cmd.x, cmd.y, cmd.radius);
-        tagAsClaude(shape);
+        const fs = resolveFillStyle(cmd);
+        const shape = wobbleCircle(cmd.x, cmd.y, cmd.radius, fs);
+        tagAsClaude(shape, "circle", { x: cmd.x, y: cmd.y, radius: cmd.radius });
+        if (fs !== "hachure") (shape as any).data.fillStyle = fs;
         if (cmd.label) (shape as any).data.label = cmd.label;
-        if (cmd.fill === false) removeFill(shape);
+        if (cmd.color) applyColor(shape, cmd.color);
+        if (cmd.opacity !== undefined) shape.set({ opacity: cmd.opacity });
         canvas.add(shape);
         added.push(shape);
         break;
       }
       case "ellipse": {
-        const shape = wobbleEllipse(cmd.x, cmd.y, cmd.width / 2, cmd.height / 2);
-        tagAsClaude(shape);
+        const fs = resolveFillStyle(cmd);
+        const shape = wobbleEllipse(cmd.x, cmd.y, cmd.width / 2, cmd.height / 2, fs);
+        tagAsClaude(shape, "ellipse", { x: cmd.x, y: cmd.y, width: cmd.width, height: cmd.height });
+        if (fs !== "hachure") (shape as any).data.fillStyle = fs;
         if (cmd.label) (shape as any).data.label = cmd.label;
-        if (cmd.fill === false) removeFill(shape);
+        if (cmd.color) applyColor(shape, cmd.color);
+        if (cmd.opacity !== undefined) shape.set({ opacity: cmd.opacity });
         canvas.add(shape);
         added.push(shape);
         break;
       }
       case "line": {
         const shape = wobbleLine(cmd.x1, cmd.y1, cmd.x2, cmd.y2);
-        tagAsClaude(shape);
+        tagAsClaude(shape, "line");
         if (cmd.label) (shape as any).data.label = cmd.label;
+        if (cmd.color) applyColor(shape, cmd.color);
+        if (cmd.opacity !== undefined) shape.set({ opacity: cmd.opacity });
         canvas.add(shape);
         added.push(shape);
         break;
       }
       case "arrow": {
         const shape = wobbleArrow(cmd.x1, cmd.y1, cmd.x2, cmd.y2);
-        tagAsClaude(shape);
+        tagAsClaude(shape, "arrow");
         if (cmd.label) (shape as any).data.label = cmd.label;
+        if (cmd.color) applyColor(shape, cmd.color);
+        if (cmd.opacity !== undefined) shape.set({ opacity: cmd.opacity });
         canvas.add(shape);
         added.push(shape);
         break;
@@ -496,13 +660,18 @@ function renderCommandsToCanvas(
           top: cmd.y,
           fontSize: cmd.fontSize ?? 16,
           fontFamily: FONT_FAMILY,
-          fill: FILL_COLOR,
+          fill: cmd.color ?? FILL_COLOR,
           textAlign: align,
           originX: align === "center" ? "center" : align === "right" ? "right" : "left",
+          fontWeight: cmd.fontWeight ?? "normal",
+          fontStyle: cmd.fontStyle ?? "normal",
+          underline: cmd.underline ?? false,
+          linethrough: cmd.linethrough ?? false,
           selectable: true,
           hasControls: false,
         });
-        tagAsClaude(t);
+        tagAsClaude(t, "text");
+        if (cmd.opacity !== undefined) t.set({ opacity: cmd.opacity });
         canvas.add(t);
         added.push(t);
         break;
@@ -513,13 +682,14 @@ function renderCommandsToCanvas(
           .map(([px, py], i) => `${i === 0 ? "M" : "L"} ${px} ${py}`)
           .join(" ");
         const p = new Path(pathData, {
-          stroke: STROKE_COLOR,
+          stroke: cmd.color ?? STROKE_COLOR,
           strokeWidth: STROKE_WIDTH,
           fill: "transparent",
           selectable: true,
           hasControls: false,
         });
-        tagAsClaude(p);
+        tagAsClaude(p, "freehand");
+        if (cmd.opacity !== undefined) p.set({ opacity: cmd.opacity });
         canvas.add(p);
         added.push(p);
         break;

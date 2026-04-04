@@ -21,9 +21,10 @@ export function useUndoRedo({ getCanvas }: UseUndoRedoOptions) {
   const historyRef = useRef<string[]>([]);
   const indexRef = useRef(-1);
   const restoringRef = useRef(false);
+  const pausedRef = useRef(false);
 
   const saveSnapshot = useCallback(() => {
-    if (restoringRef.current) return;
+    if (restoringRef.current || pausedRef.current) return;
     const canvas = getCanvas();
     if (!canvas) return;
 
@@ -85,6 +86,10 @@ export function useUndoRedo({ getCanvas }: UseUndoRedoOptions) {
     await restoreSnapshot(historyRef.current[indexRef.current]);
   }, [restoreSnapshot]);
 
+  // Pause/resume — for atomic multi-step operations (remove+add = one snapshot)
+  const pauseHistory = useCallback(() => { pausedRef.current = true; }, []);
+  const resumeHistory = useCallback(() => { pausedRef.current = false; }, []);
+
   // Listen to canvas events to auto-save snapshots
   useEffect(() => {
     const canvas = getCanvas();
@@ -115,5 +120,5 @@ export function useUndoRedo({ getCanvas }: UseUndoRedoOptions) {
     };
   }, [getCanvas, saveSnapshot]);
 
-  return { undo, redo, saveSnapshot };
+  return { undo, redo, saveSnapshot, pauseHistory, resumeHistory };
 }

@@ -7,6 +7,7 @@ export const FILL_COLOR = "#B5651D";
 export const FILL_COLOR_LIGHT = "rgba(181, 101, 29, 0.35)";
 export const STROKE_WIDTH = 1.5;
 export const FONT_FAMILY = "Patrick Hand, cursive";
+export const FILL_STYLES = ["hachure", "solid", "zigzag", "cross-hatch", "dots", "dashed", "zigzag-line", "none"] as const;
 
 // ── Lazy-init rough.js generator ────────────────────────────────────────────
 let _generator: RoughGenerator | null = null;
@@ -85,12 +86,23 @@ function drawableToFabricObjects(drawable: Drawable, fillColorOverride?: string,
     if (!pathStr) continue;
 
     if (opSet.type === "fillSketch") {
-      // Hachure fill lines
+      // Hachure/pattern fill lines
       objects.push(
         new Path(pathStr, {
           stroke: fillColorOverride || FILL_COLOR_LIGHT,
           strokeWidth: ROUGH_OPTS.fillWeight,
           fill: "transparent",
+          selectable: false,
+          evented: false,
+        })
+      );
+    } else if (opSet.type === "fillPath") {
+      // Solid fill path
+      objects.push(
+        new Path(pathStr, {
+          stroke: "transparent",
+          strokeWidth: 0,
+          fill: fillColorOverride || FILL_COLOR_LIGHT,
           selectable: false,
           evented: false,
         })
@@ -112,30 +124,124 @@ function drawableToFabricObjects(drawable: Drawable, fillColorOverride?: string,
   return objects;
 }
 
+// ── Fill helpers ────────────────────────────────────────────────────────────
+
+export function removeFillFromGroup(group: Group): void {
+  for (const child of group.getObjects()) {
+    if (child instanceof Path) {
+      const s = child.stroke as string;
+      const f = child.fill as string;
+      if ((s && (s.startsWith("rgba") || s === "transparent")) || (f && f.startsWith("rgba"))) {
+        child.visible = false;
+      }
+    }
+  }
+  group.dirty = true;
+}
+
+function buildFillOpts(fillStyle: string | undefined, strokeColor: string, fillColor: string, seed: number) {
+  const base = { ...ROUGH_OPTS, stroke: strokeColor, fill: fillColor, seed };
+  if (fillStyle && fillStyle !== "none" && fillStyle !== "hachure") {
+    return { ...base, fillStyle };
+  }
+  return base;
+}
+
+// ── Generate rough.js fill/stroke paths for a shape (without wrapping in Group) ──
+
+export function generateRectPaths(x: number, y: number, w: number, h: number, strokeColor: string, fillColor: string, fillStyle?: string): FabricObject[] {
+  const seed = positionSeed(x, y, w, h);
+  const fillLight = hexToRgba(fillColor, 0.35);
+  const opts = buildFillOpts(fillStyle, strokeColor, fillLight, seed);
+  const drawable = gen().rectangle(x, y, w, h, opts);
+  const objects = drawableToFabricObjects(drawable, fillLight, strokeColor);
+  if (fillStyle === "none") {
+    for (const obj of objects) {
+      if (obj instanceof Path) {
+        const s = obj.stroke as string;
+        const f = obj.fill as string;
+        if ((s && (s.startsWith("rgba") || s === "transparent")) || (f && f.startsWith("rgba"))) {
+          obj.visible = false;
+        }
+      }
+    }
+  }
+  return objects;
+}
+
+export function generateCirclePaths(cx: number, cy: number, r: number, strokeColor: string, fillColor: string, fillStyle?: string): FabricObject[] {
+  const seed = positionSeed(cx, cy, r, r);
+  const fillLight = hexToRgba(fillColor, 0.35);
+  const opts = buildFillOpts(fillStyle, strokeColor, fillLight, seed);
+  const drawable = gen().circle(cx, cy, r * 2, opts);
+  const objects = drawableToFabricObjects(drawable, fillLight, strokeColor);
+  if (fillStyle === "none") {
+    for (const obj of objects) {
+      if (obj instanceof Path) {
+        const s = obj.stroke as string;
+        const f = obj.fill as string;
+        if ((s && (s.startsWith("rgba") || s === "transparent")) || (f && f.startsWith("rgba"))) {
+          obj.visible = false;
+        }
+      }
+    }
+  }
+  return objects;
+}
+
+export function generateEllipsePaths(cx: number, cy: number, rx: number, ry: number, strokeColor: string, fillColor: string, fillStyle?: string): FabricObject[] {
+  const seed = positionSeed(cx, cy, rx, ry);
+  const fillLight = hexToRgba(fillColor, 0.35);
+  const opts = buildFillOpts(fillStyle, strokeColor, fillLight, seed);
+  const drawable = gen().ellipse(cx, cy, rx * 2, ry * 2, opts);
+  const objects = drawableToFabricObjects(drawable, fillLight, strokeColor);
+  if (fillStyle === "none") {
+    for (const obj of objects) {
+      if (obj instanceof Path) {
+        const s = obj.stroke as string;
+        const f = obj.fill as string;
+        if ((s && (s.startsWith("rgba") || s === "transparent")) || (f && f.startsWith("rgba"))) {
+          obj.visible = false;
+        }
+      }
+    }
+  }
+  return objects;
+}
+
 // ── Shape renderers (return Fabric.js Group with rough.js paths) ────────────
 
-export function roughRect(x: number, y: number, w: number, h: number): Group {
+export function roughRect(x: number, y: number, w: number, h: number, fillStyle?: string): Group {
   const seed = positionSeed(x, y, w, h);
   const fillLight = hexToRgba(FILL_COLOR, 0.35);
-  const drawable = gen().rectangle(x, y, w, h, { ...ROUGH_OPTS, stroke: FILL_COLOR, fill: fillLight, seed });
+  const opts = buildFillOpts(fillStyle, FILL_COLOR, fillLight, seed);
+  const drawable = gen().rectangle(x, y, w, h, opts);
   const objects = drawableToFabricObjects(drawable, fillLight, FILL_COLOR);
-  return new Group(objects, { selectable: true, hasControls: false });
+  const group = new Group(objects, { selectable: true, hasControls: false });
+  if (fillStyle === "none") removeFillFromGroup(group);
+  return group;
 }
 
-export function roughCircle(cx: number, cy: number, r: number): Group {
+export function roughCircle(cx: number, cy: number, r: number, fillStyle?: string): Group {
   const seed = positionSeed(cx, cy, r, r);
   const fillLight = hexToRgba(FILL_COLOR, 0.35);
-  const drawable = gen().circle(cx, cy, r * 2, { ...ROUGH_OPTS, stroke: FILL_COLOR, fill: fillLight, seed });
+  const opts = buildFillOpts(fillStyle, FILL_COLOR, fillLight, seed);
+  const drawable = gen().circle(cx, cy, r * 2, opts);
   const objects = drawableToFabricObjects(drawable, fillLight, FILL_COLOR);
-  return new Group(objects, { selectable: true, hasControls: false });
+  const group = new Group(objects, { selectable: true, hasControls: false });
+  if (fillStyle === "none") removeFillFromGroup(group);
+  return group;
 }
 
-export function roughEllipse(cx: number, cy: number, rx: number, ry: number): Group {
+export function roughEllipse(cx: number, cy: number, rx: number, ry: number, fillStyle?: string): Group {
   const seed = positionSeed(cx, cy, rx, ry);
   const fillLight = hexToRgba(FILL_COLOR, 0.35);
-  const drawable = gen().ellipse(cx, cy, rx * 2, ry * 2, { ...ROUGH_OPTS, stroke: FILL_COLOR, fill: fillLight, seed });
+  const opts = buildFillOpts(fillStyle, FILL_COLOR, fillLight, seed);
+  const drawable = gen().ellipse(cx, cy, rx * 2, ry * 2, opts);
   const objects = drawableToFabricObjects(drawable, fillLight, FILL_COLOR);
-  return new Group(objects, { selectable: true, hasControls: false });
+  const group = new Group(objects, { selectable: true, hasControls: false });
+  if (fillStyle === "none") removeFillFromGroup(group);
+  return group;
 }
 
 export function roughLine(x1: number, y1: number, x2: number, y2: number): Group {
@@ -191,30 +297,26 @@ export function hexToRgba(hex: string, alpha: number): string {
 
 // ── User shape renderers (custom fill color) ────────────────────────────────
 
-export function userRoughRect(left: number, top: number, w: number, h: number, fillColor: string): Group {
+export function userRoughRect(left: number, top: number, w: number, h: number, fillColor: string, fillStyle?: string): Group {
   const seed = positionSeed(left, top, w, h);
   const fillLight = hexToRgba(fillColor, 0.35);
-  const drawable = gen().rectangle(0, 0, w, h, {
-    ...ROUGH_OPTS,
-    stroke: fillColor,
-    fill: fillLight,
-    seed,
-  });
+  const opts = buildFillOpts(fillStyle, fillColor, fillLight, seed);
+  const drawable = gen().rectangle(0, 0, w, h, opts);
   const objects = drawableToFabricObjects(drawable, fillLight, fillColor);
-  return new Group(objects, { left, top, originX: "left", originY: "top", selectable: true, hasControls: true });
+  const group = new Group(objects, { left, top, originX: "left", originY: "top", selectable: true, hasControls: true });
+  if (fillStyle === "none") removeFillFromGroup(group);
+  return group;
 }
 
-export function userRoughEllipse(left: number, top: number, w: number, h: number, fillColor: string): Group {
+export function userRoughEllipse(left: number, top: number, w: number, h: number, fillColor: string, fillStyle?: string): Group {
   const seed = positionSeed(left, top, w, h);
   const fillLight = hexToRgba(fillColor, 0.35);
-  const drawable = gen().ellipse(w / 2, h / 2, w, h, {
-    ...ROUGH_OPTS,
-    stroke: fillColor,
-    fill: fillLight,
-    seed,
-  });
+  const opts = buildFillOpts(fillStyle, fillColor, fillLight, seed);
+  const drawable = gen().ellipse(w / 2, h / 2, w, h, opts);
   const objects = drawableToFabricObjects(drawable, fillLight, fillColor);
-  return new Group(objects, { left, top, originX: "left", originY: "top", selectable: true, hasControls: true });
+  const group = new Group(objects, { left, top, originX: "left", originY: "top", selectable: true, hasControls: true });
+  if (fillStyle === "none") removeFillFromGroup(group);
+  return group;
 }
 
 export function userRoughLine(x1: number, y1: number, x2: number, y2: number, strokeColor: string): Group {

@@ -41,8 +41,8 @@ function isUserLayer(obj: FabricObject): boolean {
   return (obj as unknown as { data?: { layer?: string } }).data?.layer === "user";
 }
 
-function tagAsUser(obj: FabricObject): void {
-  obj.set({ data: { layer: "user" } });
+function tagAsUser(obj: FabricObject, shapeType?: string, geo?: Record<string, unknown>): void {
+  obj.set({ data: { layer: "user", ...(shapeType && { shapeType }), ...(geo && { geo }) } });
 }
 
 export function useDrawingTools({
@@ -159,7 +159,7 @@ export function useDrawingTools({
     // Tag paths created by freehand drawing
     const onPathCreated = (opt: { path: FabricObject }) => {
       if (opt.path) {
-        tagAsUser(opt.path);
+        tagAsUser(opt.path, "freehand");
       }
     };
 
@@ -197,9 +197,13 @@ export function useDrawingTools({
             for (const child of children) {
               if (child instanceof Path) {
                 const currentStroke = child.stroke as string;
-                // Hachure fill paths have lighter/transparent strokes
+                const currentFill = child.fill as string;
+                // Fill paths: hachure uses stroke, solid uses fill
                 if (currentStroke && (currentStroke.startsWith("rgba") || currentStroke === "transparent")) {
                   child.set({ stroke: fillLight });
+                  if (currentFill && currentFill.startsWith("rgba")) {
+                    child.set({ fill: fillLight });
+                  }
                 } else {
                   // Outline stroke
                   child.set({ stroke: color });
@@ -236,7 +240,7 @@ export function useDrawingTools({
           selectable: true,
           hasControls: true,
         });
-        tagAsUser(text);
+        tagAsUser(text, "text");
         canvas.add(text);
         canvas.setActiveObject(text);
         text.enterEditing();
@@ -406,7 +410,7 @@ export function useDrawingTools({
       if ((activeTool === "line" || activeTool === "arrow") && ghostRef.current) {
         const shape = ghostRef.current as RoughLineObject;
         shape.set({ selectable: true, evented: true });
-        tagAsUser(shape);
+        tagAsUser(shape, activeTool);
         ghostRef.current = null;
       } else {
         // Remove ghost for rect/circle (they create a different final object)
@@ -426,11 +430,11 @@ export function useDrawingTools({
 
         if (activeTool === "rect") {
           const shape = userRoughRect(left, top, w, h, color);
-          tagAsUser(shape);
+          tagAsUser(shape, "rect", { x: left, y: top, width: w, height: h });
           canvas.add(shape);
         } else if (activeTool === "circle") {
           const shape = userRoughEllipse(left, top, w, h, color);
-          tagAsUser(shape);
+          tagAsUser(shape, "ellipse", { x: left, y: top, width: w, height: h });
           canvas.add(shape);
         }
       }

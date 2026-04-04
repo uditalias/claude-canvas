@@ -23,7 +23,7 @@ interface TextOptions {
 export interface CanvasContextMenuContentProps {
   opacity: number;
   locked: boolean;
-  filled?: boolean;
+  fillStyle?: string;
   label?: string;
   textOptions?: TextOptions;
   onBringToFront: () => void;
@@ -34,19 +34,30 @@ export interface CanvasContextMenuContentProps {
   onCenterOnCanvas: () => void;
   onTextChange?: (opts: Partial<TextOptions>) => void;
   onColorChange?: (color: string) => void;
-  onToggleFill?: () => void;
+  onFillStyleChange?: (style: string) => void;
   onEditLabel?: () => void;
   onDelete: () => void;
 }
+
+const FILL_STYLE_LABELS: [string, string][] = [
+  ["hachure", "Hachure"],
+  ["solid", "Solid"],
+  ["zigzag", "Zigzag"],
+  ["cross-hatch", "Cross-hatch"],
+  ["dots", "Dots"],
+  ["dashed", "Dashed"],
+  ["zigzag-line", "Zigzag line"],
+  ["none", "None"],
+];
 
 const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 40, 48, 64];
 const OPACITY_PRESETS = [100, 75, 50, 25, 10];
 
 export function CanvasContextMenuContent(props: CanvasContextMenuContentProps) {
   const {
-    opacity, locked, filled, label, textOptions,
+    opacity, locked, fillStyle, label, textOptions,
     onBringToFront, onSendToBack, onDuplicate, onOpacityChange,
-    onToggleLock, onCenterOnCanvas, onTextChange, onColorChange, onToggleFill, onEditLabel, onDelete,
+    onToggleLock, onCenterOnCanvas, onTextChange, onColorChange, onFillStyleChange, onEditLabel, onDelete,
   } = props;
 
   return (
@@ -131,13 +142,25 @@ export function CanvasContextMenuContent(props: CanvasContextMenuContentProps) {
         </>
       )}
 
-      {onToggleFill && (
-        <DropdownMenuCheckboxItem
-          checked={filled}
-          onCheckedChange={() => onToggleFill()}
-        >
-          Fill
-        </DropdownMenuCheckboxItem>
+      {onFillStyleChange && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>Fill style</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup
+                value={fillStyle || "hachure"}
+                onValueChange={(v) => onFillStyleChange(v)}
+              >
+                {FILL_STYLE_LABELS.map(([value, label]) => (
+                  <DropdownMenuRadioItem key={value} value={value}>
+                    {label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </>
       )}
 
       <DropdownMenuSeparator />

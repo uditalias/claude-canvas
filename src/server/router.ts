@@ -60,7 +60,11 @@ router.get("/api/export", async (req, res) => {
     const data = await requestExport(format, labels);
     const dir = path.join(os.tmpdir(), "claude-canvas");
     fs.mkdirSync(dir, { recursive: true });
-    if (format === "svg") {
+    if (format === "json") {
+      const filepath = path.join(dir, `canvas-${Date.now()}.json`);
+      fs.writeFileSync(filepath, data);
+      res.json({ ok: true, path: filepath, format: "json" });
+    } else if (format === "svg") {
       const filepath = path.join(dir, `canvas-${Date.now()}.svg`);
       fs.writeFileSync(filepath, data);
       res.json({ ok: true, path: filepath, format: "svg" });

@@ -146,8 +146,8 @@ program
 // ── export ──────────────────────────────────────────────────────────────────
 program
   .command("export")
-  .description("Export the canvas as PNG or SVG")
-  .option("-f, --format <format>", "Export format: png or svg", "png")
+  .description("Export the canvas as PNG, SVG, or JSON")
+  .option("-f, --format <format>", "Export format: png, svg, or json", "png")
   .option("--labels", "Include shape labels in export", false)
   .action(async (opts: { format: string; labels: boolean }) => {
     const session = requireSession();

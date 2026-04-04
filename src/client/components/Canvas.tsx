@@ -15,7 +15,8 @@ import type { ToolState } from "../hooks/useToolState";
 import { type ResolvedTheme, type ThemeMode, THEME } from "../hooks/useTheme";
 import { FabricObject, Group, IText, Path, Point } from "fabric";
 import { RoughLineObject, RoughArrowObject } from "../lib/rough-line";
-import { hexToRgba } from "../lib/wobble";
+import { hexToRgba, wobbleRect, wobbleCircle, wobbleEllipse, userRoughRect, userRoughEllipse } from "../lib/wobble";
+import { getObjectColor, applyColor } from "../hooks/useCanvas";
 
 interface CanvasViewProps {
   toolState: ToolState;
@@ -40,7 +41,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
   activeToolRef.current = toolState.activeTool;
 
   const themeColors = THEME[theme.resolved];
-  const { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onLabelsUpdate, exportSVG, exportPNG } =
+  const { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onLabelsUpdate, exportSVG, exportPNG, exportJSON } =
     useCanvas(canvasElRef, containerRef, activeToolRef, themeColors);
 
   // ── Shape labels (rendered as DOM, positioned from after:render) ────────
@@ -54,7 +55,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
     onCanvasReady?.(getCanvas);
   }, [getCanvas, onCanvasReady]);
 
-  const { undo, redo, saveSnapshot } = useUndoRedo({ getCanvas });
+  const { undo, redo, saveSnapshot, pauseHistory, resumeHistory } = useUndoRedo({ getCanvas });
   useSnapGuides({ getCanvas });
 
   useDrawingTools({
@@ -352,7 +353,9 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
         const exportPayload = msg.payload as { format: string; labels: boolean };
         if (exportPayload) {
           let data: string;
-          if (exportPayload.format === "svg") {
+          if (exportPayload.format === "json") {
+            data = exportJSON();
+          } else if (exportPayload.format === "svg") {
             data = exportSVG(exportPayload.labels);
           } else {
             data = exportPNG(exportPayload.labels);
@@ -363,7 +366,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
         void handleScreenshotRequest();
       }
     },
-    [renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, getAllAnswers, getQuestionsState, onAskBatch, exportSVG, exportPNG]
+    [renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, getAllAnswers, getQuestionsState, onAskBatch, exportSVG, exportPNG, exportJSON]
   );
 
   const { send } = useWebSocket({ onMessage: handleMessage });
@@ -437,9 +440,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
             opacity={target.opacity ?? 1}
             locked={target.lockMovementX === true}
             label={(target as any).data?.label ?? ""}
-            filled={target instanceof Group ? target.getObjects().some(
-              (c) => c instanceof Path && c.visible !== false && (c.stroke as string)?.startsWith("rgba")
-            ) : undefined}
+            fillStyle={(target as any).data?.fillStyle ?? "hachure"}
             textOptions={target instanceof IText ? {
               fontSize: (target as IText).fontSize ?? 16,
               fontWeight: String((target as IText).fontWeight ?? "normal"),
@@ -468,8 +469,13 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
                 for (const child of target.getObjects()) {
                   if (child instanceof Path) {
                     const s = child.stroke as string;
+                    const f = child.fill as string;
                     if (s && (s.startsWith("rgba") || s === "transparent")) {
                       child.set({ stroke: fillLight });
+                      // Solid fill paths store visible color in fill, not stroke
+                      if (f && f.startsWith("rgba")) {
+                        child.set({ fill: fillLight });
+                      }
                     } else {
                       child.set({ stroke: color });
                     }
@@ -479,28 +485,65 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
               canvas.requestRenderAll();
               saveSnapshot();
             }}
-            onToggleFill={target instanceof Group ? () => {
+            onFillStyleChange={target instanceof Group ? (style: string) => {
               const canvas = getCanvas();
               if (!canvas || !target) return;
-              const children = (target as Group).getObjects();
-              // Hachure fill paths have rgba strokes
-              const fillPaths = children.filter(
-                (c) => c instanceof Path && (c.stroke as string)?.startsWith("rgba")
-              );
-              if (fillPaths.length === 0) return;
-              const currentlyVisible = fillPaths.some((p) => p.visible !== false);
-              for (const p of fillPaths) {
-                p.visible = !currentlyVisible;
-                p.dirty = true;
+              const data = (target as any).data;
+              const shapeType = data?.shapeType;
+              const geo = data?.geo as Record<string, number> | undefined;
+              if (!shapeType || !["rect", "circle", "ellipse"].includes(shapeType) || !geo) return;
+
+              const color = getObjectColor(target);
+              const isUser = data?.layer === "user";
+
+              // Re-create shape at same internal coordinates
+              let newShape: Group;
+              if (shapeType === "rect") {
+                newShape = isUser
+                  ? userRoughRect(0, 0, geo.width, geo.height, color || "#000000", style)
+                  : wobbleRect(geo.x, geo.y, geo.width, geo.height, style);
+              } else if (shapeType === "circle") {
+                const d = geo.radius * 2;
+                newShape = isUser
+                  ? userRoughEllipse(0, 0, d, d, color || "#000000", style)
+                  : wobbleCircle(geo.x, geo.y, geo.radius, style);
+              } else {
+                newShape = isUser
+                  ? userRoughEllipse(0, 0, geo.width, geo.height, color || "#000000", style)
+                  : wobbleEllipse(geo.x, geo.y, geo.width / 2, geo.height / 2, style);
               }
-              (target as Group).set("objectCaching", false);
-              (target as Group).dirty = true;
-              canvas.requestRenderAll();
-              saveSnapshot();
-              // Re-enable caching next frame
-              requestAnimationFrame(() => {
-                (target as Group).set("objectCaching", true);
+
+              // Copy all spatial transforms — preserves moves, rotation, scaling
+              newShape.set({
+                left: target.left,
+                top: target.top,
+                angle: target.angle,
+                scaleX: target.scaleX,
+                scaleY: target.scaleY,
+                flipX: target.flipX,
+                flipY: target.flipY,
+                originX: target.originX,
+                originY: target.originY,
+                data: { ...data, fillStyle: style },
+                opacity: target.opacity,
+                selectable: target.selectable,
+                evented: target.evented,
+                hasControls: target.hasControls,
               });
+              if (!isUser && color) applyColor(newShape, color);
+              newShape.setCoords();
+
+              // Pause undo history so remove+add is atomic (one undo step)
+              pauseHistory();
+              const idx = canvas.getObjects().indexOf(target);
+              canvas.remove(target);
+              canvas.insertAt(idx, newShape);
+              resumeHistory();
+
+              canvas.setActiveObject(newShape);
+              canvas.requestRenderAll();
+              contextTargetRef.current = newShape;
+              saveSnapshot();
             } : undefined}
             onEditLabel={isUserLayer(target) && !(target instanceof IText) ? () => {
               setMenuOpen(false);
@@ -618,6 +661,18 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
             const a = document.createElement("a");
             a.href = url;
             a.download = "claude-canvas.svg";
+            a.click();
+            URL.revokeObjectURL(url);
+          }
+        }}
+        onExportJSON={() => {
+          const json = exportJSON();
+          if (json) {
+            const blob = new Blob([json], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "claude-canvas.json";
             a.click();
             URL.revokeObjectURL(url);
           }
