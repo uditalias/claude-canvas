@@ -40,7 +40,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
   activeToolRef.current = toolState.activeTool;
 
   const themeColors = THEME[theme.resolved];
-  const { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onLabelsUpdate } =
+  const { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onLabelsUpdate, exportSVG, exportPNG } =
     useCanvas(canvasElRef, containerRef, activeToolRef, themeColors);
 
   // ── Shape labels (rendered as DOM, positioned from after:render) ────────
@@ -346,11 +346,22 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
         } else {
           clear();
         }
+      } else if (msg.type === "export_request") {
+        const exportPayload = msg.payload as { format: string; labels: boolean };
+        if (exportPayload) {
+          let data: string;
+          if (exportPayload.format === "svg") {
+            data = exportSVG(exportPayload.labels);
+          } else {
+            data = exportPNG(exportPayload.labels);
+          }
+          sendRef.current?.({ type: "export_response", payload: data });
+        }
       } else if (msg.type === "screenshot_request") {
         void handleScreenshotRequest();
       }
     },
-    [renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, getAllAnswers, getQuestionsState, onAskBatch]
+    [renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, getAllAnswers, getQuestionsState, onAskBatch, exportSVG, exportPNG]
   );
 
   const { send } = useWebSocket({ onMessage: handleMessage });
@@ -582,13 +593,25 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
         getZoom={getZoom}
         onUndo={undo}
         onRedo={redo}
-        onExport={() => {
-          const dataUrl = takeScreenshot();
+        onExportPNG={(includeLabels) => {
+          const dataUrl = exportPNG(includeLabels);
           if (dataUrl) {
             const a = document.createElement("a");
             a.href = dataUrl;
             a.download = "claude-canvas.png";
             a.click();
+          }
+        }}
+        onExportSVG={(includeLabels) => {
+          const svg = exportSVG(includeLabels);
+          if (svg) {
+            const blob = new Blob([svg], { type: "image/svg+xml" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "claude-canvas.svg";
+            a.click();
+            URL.revokeObjectURL(url);
           }
         }}
       />

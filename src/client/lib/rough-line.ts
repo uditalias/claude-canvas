@@ -111,6 +111,24 @@ function drawOps(ctx: CanvasRenderingContext2D, ops: Op[]) {
   ctx.stroke();
 }
 
+function opsToSvgPath(ops: Op[]): string {
+  let d = "";
+  for (const op of ops) {
+    switch (op.op) {
+      case "move":
+        d += `M ${op.data[0]} ${op.data[1]} `;
+        break;
+      case "lineTo":
+        d += `L ${op.data[0]} ${op.data[1]} `;
+        break;
+      case "bcurveTo":
+        d += `C ${op.data[0]} ${op.data[1]} ${op.data[2]} ${op.data[3]} ${op.data[4]} ${op.data[5]} `;
+        break;
+    }
+  }
+  return d.trim();
+}
+
 // ── RoughLineObject ────────────────────────────────────────────────────────
 
 export class RoughLineObject extends Line {
@@ -167,6 +185,25 @@ export class RoughLineObject extends Line {
       "roughness",
       "seed",
     ]);
+  }
+
+  toSVG(): string {
+    const pts = this.calcLinePoints();
+    const drawable = gen().line(pts.x1, pts.y1, pts.x2, pts.y2, {
+      roughness: this.roughness,
+      stroke: this.strokeColor,
+      strokeWidth: 1.5,
+      seed: this.seed,
+    });
+    let paths = "";
+    for (const opSet of drawable.sets) {
+      if (opSet.type === "path") {
+        const d = opsToSvgPath(opSet.ops as Op[]);
+        paths += `<path d="${d}" stroke="${this.strokeColor}" stroke-width="1.5" fill="none" />`;
+      }
+    }
+    const matrix = this.calcOwnMatrix();
+    return `<g transform="matrix(${matrix.join(" ")})">${paths}</g>`;
   }
 }
 
@@ -259,5 +296,49 @@ export class RoughArrowObject extends Line {
       "roughness",
       "seed",
     ]);
+  }
+
+  toSVG(): string {
+    const pts = this.calcLinePoints();
+    const lineDrawable = gen().line(pts.x1, pts.y1, pts.x2, pts.y2, {
+      roughness: this.roughness,
+      stroke: this.strokeColor,
+      strokeWidth: 1.5,
+      seed: this.seed,
+    });
+    let paths = "";
+    for (const opSet of lineDrawable.sets) {
+      if (opSet.type === "path") {
+        const d = opsToSvgPath(opSet.ops as Op[]);
+        paths += `<path d="${d}" stroke="${this.strokeColor}" stroke-width="1.5" fill="none" />`;
+      }
+    }
+    const dx = pts.x2 - pts.x1;
+    const dy = pts.y2 - pts.y1;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const headLen = 14;
+    const headWidth = 7;
+    const ax = pts.x2 - ux * headLen + (-uy) * headWidth;
+    const ay = pts.y2 - uy * headLen + ux * headWidth;
+    const bx = pts.x2 - ux * headLen + uy * headWidth;
+    const by = pts.y2 - uy * headLen + (-ux) * headWidth;
+    const h1 = gen().linearPath([[pts.x2, pts.y2], [ax, ay]], { roughness: this.roughness, stroke: this.strokeColor, strokeWidth: 1.5, seed: this.seed + 1 });
+    const h2 = gen().linearPath([[pts.x2, pts.y2], [bx, by]], { roughness: this.roughness, stroke: this.strokeColor, strokeWidth: 1.5, seed: this.seed + 2 });
+    for (const opSet of h1.sets) {
+      if (opSet.type === "path") {
+        const d = opsToSvgPath(opSet.ops as Op[]);
+        paths += `<path d="${d}" stroke="${this.strokeColor}" stroke-width="1.5" fill="none" />`;
+      }
+    }
+    for (const opSet of h2.sets) {
+      if (opSet.type === "path") {
+        const d = opsToSvgPath(opSet.ops as Op[]);
+        paths += `<path d="${d}" stroke="${this.strokeColor}" stroke-width="1.5" fill="none" />`;
+      }
+    }
+    const matrix = this.calcOwnMatrix();
+    return `<g transform="matrix(${matrix.join(" ")})">${paths}</g>`;
   }
 }

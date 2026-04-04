@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { broadcastDraw, broadcastClear, broadcastAsk, requestScreenshot, getClientCount } from "./state.js";
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { broadcastDraw, broadcastClear, broadcastAsk, requestScreenshot, requestExport, getClientCount } from "./state.js";
 import { saveScreenshot } from "../utils/screenshot.js";
 
 const router = Router();
@@ -45,6 +48,26 @@ router.get("/api/screenshot", async (_req, res) => {
       return a;
     });
     res.json({ ok: true, path: filepath, answers: processedAnswers });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+router.get("/api/export", async (req, res) => {
+  try {
+    const format = (req.query.format as string) || "png";
+    const labels = req.query.labels === "true";
+    const data = await requestExport(format, labels);
+    const dir = path.join(os.tmpdir(), "claude-canvas");
+    fs.mkdirSync(dir, { recursive: true });
+    if (format === "svg") {
+      const filepath = path.join(dir, `canvas-${Date.now()}.svg`);
+      fs.writeFileSync(filepath, data);
+      res.json({ ok: true, path: filepath, format: "svg" });
+    } else {
+      const filepath = saveScreenshot(data);
+      res.json({ ok: true, path: filepath, format: "png" });
+    }
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }

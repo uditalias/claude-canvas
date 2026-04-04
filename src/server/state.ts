@@ -4,11 +4,13 @@ import type { Answer } from "../protocol/types.js";
 interface ServerState {
   clients: Set<WebSocket.WebSocket>;
   pendingScreenshot: ((data: { image: string; answers: Answer[] }) => void) | null;
+  pendingExport: ((data: string) => void) | null;
 }
 
 const state: ServerState = {
   clients: new Set(),
   pendingScreenshot: null,
+  pendingExport: null,
 };
 
 export function addClient(ws: WebSocket.WebSocket): void {
@@ -66,6 +68,38 @@ export function requestScreenshot(): Promise<{ image: string; answers: Answer[] 
 export function resolveScreenshot(data: { image: string; answers: Answer[] }): void {
   if (state.pendingScreenshot) {
     state.pendingScreenshot(data);
+  }
+}
+
+export function requestExport(format: string, labels: boolean): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const clients = [...state.clients].filter(
+      (c) => c.readyState === WebSocket.WebSocket.OPEN
+    );
+    if (clients.length === 0) {
+      return reject(new Error("No browser clients connected"));
+    }
+    const timeout = setTimeout(() => {
+      state.pendingExport = null;
+      reject(new Error("Export timeout — browser did not respond"));
+    }, 10000);
+
+    state.pendingExport = (data: string) => {
+      clearTimeout(timeout);
+      state.pendingExport = null;
+      resolve(data);
+    };
+
+    clients[0].send(JSON.stringify({
+      type: "export_request",
+      payload: { format, labels },
+    }));
+  });
+}
+
+export function resolveExport(data: string): void {
+  if (state.pendingExport) {
+    state.pendingExport(data);
   }
 }
 

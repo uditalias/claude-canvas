@@ -5,6 +5,7 @@ const POPPINS_STYLE = { fontFamily: "'Poppins', sans-serif" };
 const SHORTCUTS = [
   { section: "Tools", items: [
     { keys: "V", desc: "Pointer" },
+    { keys: "H", desc: "Hand (pan)" },
     { keys: "P", desc: "Pencil" },
     { keys: "M", desc: "Marker" },
     { keys: "R", desc: "Rectangle" },

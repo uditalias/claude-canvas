@@ -143,6 +143,24 @@ program
     }
   });
 
+// ── export ──────────────────────────────────────────────────────────────────
+program
+  .command("export")
+  .description("Export the canvas as PNG or SVG")
+  .option("-f, --format <format>", "Export format: png or svg", "png")
+  .option("--labels", "Include shape labels in export", false)
+  .action(async (opts: { format: string; labels: boolean }) => {
+    const session = requireSession();
+    const url = `http://127.0.0.1:${session.port}/api/export?format=${opts.format}&labels=${opts.labels}`;
+    const res = await httpGet(url);
+    if (res.path) {
+      console.log(JSON.stringify(res));
+    } else {
+      console.error("Export failed:", res.error);
+      process.exit(1);
+    }
+  });
+
 program.parse();
 
 // ── helpers ──────────────────────────────────────────────────────────────────

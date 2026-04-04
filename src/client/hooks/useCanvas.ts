@@ -271,6 +271,65 @@ export function useCanvas(
     return dataUrl;
   }, []);
 
+  const exportSVG = useCallback((includeLabels = false): string => {
+    const canvas = fabricRef.current;
+    if (!canvas) return "";
+    const tempLabels: FabricText[] = [];
+    if (includeLabels) {
+      for (const obj of canvas.getObjects()) {
+        const label = (obj as any).data?.label as string | undefined;
+        if (!label) continue;
+        const bounds = obj.getBoundingRect();
+        const t = new FabricText(label, {
+          left: bounds.left + bounds.width / 2,
+          top: bounds.top - 4,
+          fontSize: 12,
+          fontFamily: "sans-serif",
+          fill: "rgba(0,0,0,0.5)",
+          originX: "center",
+          originY: "bottom",
+          selectable: false,
+          evented: false,
+        });
+        canvas.add(t);
+        tempLabels.push(t);
+      }
+    }
+    const svg = canvas.toSVG();
+    for (const t of tempLabels) canvas.remove(t);
+    return svg;
+  }, []);
+
+  const exportPNG = useCallback((includeLabels = false): string => {
+    const canvas = fabricRef.current;
+    if (!canvas) return "";
+    const tempLabels: FabricText[] = [];
+    if (includeLabels) {
+      for (const obj of canvas.getObjects()) {
+        const label = (obj as any).data?.label as string | undefined;
+        if (!label) continue;
+        const bounds = obj.getBoundingRect();
+        const t = new FabricText(label, {
+          left: bounds.left + bounds.width / 2,
+          top: bounds.top - 4,
+          fontSize: 12,
+          fontFamily: "sans-serif",
+          fill: "rgba(0,0,0,0.5)",
+          originX: "center",
+          originY: "bottom",
+          selectable: false,
+          evented: false,
+        });
+        canvas.add(t);
+        tempLabels.push(t);
+      }
+    }
+    canvas.requestRenderAll();
+    const dataUrl = canvas.toDataURL({ format: "png", multiplier: 1 });
+    for (const t of tempLabels) canvas.remove(t);
+    return dataUrl;
+  }, []);
+
   const clearLayer = useCallback((layer: string) => {
     const canvas = fabricRef.current;
     if (!canvas) return;
@@ -353,7 +412,7 @@ export function useCanvas(
     labelsCallbackRef.current = cb;
   }, []);
 
-  return { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onLabelsUpdate };
+  return { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onLabelsUpdate, exportSVG, exportPNG };
 }
 
 function tagAsClaude(obj: FabricObject): void {

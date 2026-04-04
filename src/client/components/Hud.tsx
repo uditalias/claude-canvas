@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+} from "./ui/dropdown-menu";
 import { Minus, Plus, Maximize, Download, Undo2, Redo2 } from "lucide-react";
 
 const POPPINS_STYLE = { fontFamily: "'Poppins', sans-serif" };
@@ -42,11 +50,13 @@ interface ZoomControlsProps {
   getZoom: () => number;
   onUndo?: () => void;
   onRedo?: () => void;
-  onExport?: () => void;
+  onExportPNG?: (includeLabels: boolean) => void;
+  onExportSVG?: (includeLabels: boolean) => void;
 }
 
-export function ZoomControls({ zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onUndo, onRedo, onExport }: ZoomControlsProps) {
+export function ZoomControls({ zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onUndo, onRedo, onExportPNG, onExportSVG }: ZoomControlsProps) {
   const [zoom, setZoom] = useState(100);
+  const [includeLabels, setIncludeLabels] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -141,23 +151,41 @@ export function ZoomControls({ zoomIn, zoomOut, resetZoom, fitToScreen, getZoom,
         </TooltipTrigger>
         <TooltipContent style={POPPINS_STYLE}>Fit to screen</TooltipContent>
       </Tooltip>
-      {onExport && (
+      {(onExportPNG || onExportSVG) && (
         <>
           <div className="w-px h-5 bg-border" />
-          <Tooltip>
-            <TooltipTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onExport}
                 className="rounded-l-none text-muted-foreground"
-                aria-label="Export as PNG"
+                aria-label="Export"
               >
                 <Download className="w-3.5 h-3.5" />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent style={POPPINS_STYLE}>Export PNG</TooltipContent>
-          </Tooltip>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top" className="min-w-[160px]">
+              {onExportPNG && (
+                <DropdownMenuItem onSelect={() => onExportPNG(includeLabels)}>
+                  Export PNG
+                </DropdownMenuItem>
+              )}
+              {onExportSVG && (
+                <DropdownMenuItem onSelect={() => onExportSVG(includeLabels)}>
+                  Export SVG
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={includeLabels}
+                onCheckedChange={(checked) => setIncludeLabels(!!checked)}
+                onSelect={(e) => e.preventDefault()}
+              >
+                Include labels
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </>
       )}
       </div>

@@ -1,6 +1,6 @@
 import * as WebSocket from "ws";
 import * as http from "http";
-import { addClient, removeClient, resolveScreenshot } from "./state.js";
+import { addClient, removeClient, resolveScreenshot, resolveExport } from "./state.js";
 
 export function attachWebSocket(server: http.Server): WebSocket.WebSocketServer {
   const wss = new WebSocket.WebSocketServer({ server });
@@ -17,6 +17,9 @@ export function attachWebSocket(server: http.Server): WebSocket.WebSocketServer 
           } else {
             resolveScreenshot(msg.payload);
           }
+        }
+        if (msg.type === "export_response" && msg.payload) {
+          resolveExport(msg.payload as string);
         }
       } catch {
         // ignore malformed messages

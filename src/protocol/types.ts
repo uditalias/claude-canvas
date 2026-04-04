@@ -38,7 +38,12 @@ export interface DrawPayload {
   commands: DrawCommand[];
 }
 
+export interface ExportRequestPayload {
+  format: "svg" | "png";
+  labels: boolean;
+}
+
 export interface WsMessage {
-  type: "draw" | "screenshot_request" | "screenshot_response" | "clear" | "ask";
-  payload?: DrawPayload | string | ScreenshotResponsePayload | AskPayload | null;
+  type: "draw" | "screenshot_request" | "screenshot_response" | "clear" | "ask" | "export_request" | "export_response";
+  payload?: DrawPayload | string | ScreenshotResponsePayload | AskPayload | ExportRequestPayload | null;
 }
