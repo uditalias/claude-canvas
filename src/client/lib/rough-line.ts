@@ -178,13 +178,14 @@ export class RoughLineObject extends Line {
     ctx.restore();
   }
 
+  // @ts-expect-error — Fabric v7 generic constraint is too narrow for custom properties
   toObject(propertiesToInclude: string[] = []) {
     return super.toObject([
       ...propertiesToInclude,
       "strokeColor",
       "roughness",
       "seed",
-    ]);
+    ] as any);
   }
 
   toSVG(): string {
@@ -289,13 +290,14 @@ export class RoughArrowObject extends Line {
     ctx.restore();
   }
 
+  // @ts-expect-error — Fabric v7 generic constraint is too narrow for custom properties
   toObject(propertiesToInclude: string[] = []) {
     return super.toObject([
       ...propertiesToInclude,
       "strokeColor",
       "roughness",
       "seed",
-    ]);
+    ] as any);
   }
 
   toSVG(): string {

@@ -29,5 +29,6 @@ export default defineConfig({
   test: {
     root: ".",
     include: ["tests/**/*.{test,spec}.{ts,tsx}"],
+    exclude: ["tests/e2e/**"],
   },
 });

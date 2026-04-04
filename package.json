@@ -10,7 +10,10 @@
     "build:client": "vite build --config vite.config.ts",
     "build:server": "esbuild src/bin/claude-canvas.ts src/server/index.ts --bundle --platform=node --outdir=dist --format=cjs --external:esbuild",
     "dev": "tsx src/bin/claude-canvas.ts",
-    "dev:client": "vite --config vite.config.ts"
+    "dev:client": "vite --config vite.config.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",
@@ -37,6 +40,7 @@
     "ws": "^8.16.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/vite": "^4.2.2",
     "@types/express": "^4.17.0",
     "@types/node": "^20.0.0",

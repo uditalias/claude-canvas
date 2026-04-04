@@ -1,5 +1,10 @@
 import { Path, FabricText, Group, FabricObject } from "fabric";
-import type { RoughGenerator, Drawable, OpSet, Op } from "roughjs/bin/generator";
+import type { RoughGenerator } from "roughjs/bin/generator";
+
+// These types exist in roughjs internals but aren't exported from the type definitions
+type Op = { op: string; data: number[] };
+type OpSet = { type: string; ops: Op[] };
+type Drawable = { sets: OpSet[]; shape: string; options: any };
 
 // ── Constants ───────────────────────────────────────────────────────────────
 export const STROKE_COLOR = "#000000";
