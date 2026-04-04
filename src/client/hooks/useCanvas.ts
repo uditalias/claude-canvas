@@ -435,6 +435,36 @@ export function useCanvas(
           if (opacity !== undefined) cmd.opacity = opacity;
           commands.push(cmd);
         }
+      } else if (shapeType === "group" && obj instanceof Group) {
+        const groupId = (data as any)?.groupId as string | undefined;
+        if (!groupId) continue;
+        // Recursively export child objects as commands
+        const childCommands: DrawCommand[] = [];
+        for (const child of obj.getObjects()) {
+          const childData = (child as any).data as { shapeType?: string; label?: string; fillStyle?: string; geo?: Record<string, number> } | undefined;
+          const cType = childData?.shapeType;
+          const cLabel = childData?.label;
+          const cGeo = childData?.geo;
+          if (cType === "rect" && cGeo) {
+            const cmd: any = { type: "rect", x: cGeo.x, y: cGeo.y, width: cGeo.width, height: cGeo.height };
+            if (cLabel) cmd.label = cLabel;
+            if (childData?.fillStyle && childData.fillStyle !== "hachure") cmd.fillStyle = childData.fillStyle;
+            childCommands.push(cmd);
+          } else if (cType === "circle" && cGeo) {
+            const cmd: any = { type: "circle", x: cGeo.x, y: cGeo.y, radius: cGeo.radius };
+            if (cLabel) cmd.label = cLabel;
+            childCommands.push(cmd);
+          } else if (cType === "ellipse" && cGeo) {
+            const cmd: any = { type: "ellipse", x: cGeo.x, y: cGeo.y, width: cGeo.width, height: cGeo.height };
+            if (cLabel) cmd.label = cLabel;
+            childCommands.push(cmd);
+          } else if (cType === "text" && child instanceof FabricText) {
+            childCommands.push({ type: "text", x: Math.round(child.left ?? 0), y: Math.round(child.top ?? 0), content: child.text ?? "", fontSize: child.fontSize ?? 16 });
+          }
+        }
+        if (childCommands.length > 0) {
+          commands.push({ type: "group", id: groupId, commands: childCommands });
+        }
       }
     }
 
@@ -695,8 +725,21 @@ function renderCommandsToCanvas(
         break;
       }
       case "group": {
-        const groupObjects = renderCommandsToCanvas(canvas, cmd.commands);
-        added.push(...groupObjects);
+        // Remove existing group with same ID (replace semantics)
+        if (cmd.id) {
+          const existing = canvas.getObjects().find(
+            (o) => (o as any).data?.groupId === cmd.id
+          );
+          if (existing) canvas.remove(existing);
+        }
+        // Render child commands into a temporary list (don't add to canvas yet)
+        const tempCanvas = { _objects: [] as FabricObject[], add(o: FabricObject) { this._objects.push(o); } } as unknown as Canvas;
+        const groupChildren = renderCommandsToCanvas(tempCanvas, cmd.commands);
+        // Wrap in a Fabric Group
+        const group = new Group(groupChildren, { selectable: false, evented: false });
+        group.set({ data: { layer: "claude", shapeType: "group", groupId: cmd.id } });
+        canvas.add(group);
+        added.push(group);
         break;
       }
       case "connector":
