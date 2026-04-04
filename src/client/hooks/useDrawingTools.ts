@@ -17,6 +17,7 @@ import {
   hexToRgba,
 } from "../lib/wobble";
 import { RoughLineObject, RoughArrowObject } from "../lib/rough-line";
+import { getObjectColor } from "./useCanvas";
 
 // Paint bucket cursor using Lucide paint-bucket icon
 function makePaintCursor(strokeColor: string) {
@@ -35,6 +36,8 @@ interface UseDrawingToolsOptions {
   selectTool: (tool: ToolType) => void;
   resolvedTheme?: ResolvedTheme;
   saveSnapshot?: () => void;
+  pauseHistory?: () => void;
+  resumeHistory?: () => void;
 }
 
 function isUserLayer(obj: FabricObject): boolean {
@@ -54,10 +57,13 @@ export function useDrawingTools({
   selectTool,
   resolvedTheme,
   saveSnapshot,
+  pauseHistory,
+  resumeHistory,
 }: UseDrawingToolsOptions) {
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const ghostRef = useRef<FabricObject | null>(null);
+  const isReRenderingRef = useRef(false);
   // Track if mouse:down landed on a user object (to suppress drawing)
   // Object to select after tool switch effect runs
   const pendingSelectRef = useRef<FabricObject | null>(null);
@@ -154,6 +160,22 @@ export function useDrawingTools({
       }
     });
 
+    // When text editing ends (blur, Escape, click outside), switch to pointer
+    const onTextEditingExited = (opt: { target: FabricObject }) => {
+      const textObj = opt.target as IText;
+      // Remove empty text objects
+      if (!textObj.text?.trim()) {
+        canvas.remove(textObj);
+        canvas.discardActiveObject();
+      }
+      if (activeTool === "text") {
+        if (textObj.text?.trim()) {
+          pendingSelectRef.current = textObj;
+        }
+        selectTool("pointer");
+      }
+    };
+
     // Tag paths created by freehand drawing, then switch to pointer
     const onPathCreated = (opt: { path: FabricObject }) => {
       if (opt.path) {
@@ -216,6 +238,19 @@ export function useDrawingTools({
       }
 
       if (activeTool === "text") {
+        // If already editing a text, exit editing and switch to pointer
+        const active = canvas.getActiveObject();
+        if (active instanceof IText && active.isEditing) {
+          active.exitEditing();
+          // Remove if empty
+          if (!active.text?.trim()) {
+            canvas.remove(active);
+          }
+          pendingSelectRef.current = active.text?.trim() ? active : null;
+          selectTool("pointer");
+          return;
+        }
+
         const text = new IText("", {
           left: pointer.x,
           top: pointer.y,
@@ -537,10 +572,71 @@ export function useDrawingTools({
       }
     };
 
+    // Re-render rough.js shapes after resize to keep stroke width consistent
+    const onObjectModified = (opt: { target: FabricObject }) => {
+      if (isReRenderingRef.current) return;
+      const target = opt.target;
+      if (!(target instanceof Group) || !isUserLayer(target)) return;
+      const data = (target as any).data;
+      const shapeType = data?.shapeType;
+      if (!shapeType || !["rect", "ellipse"].includes(shapeType)) return;
+
+      // Only re-render if scaled (not just moved)
+      const sx = target.scaleX ?? 1;
+      const sy = target.scaleY ?? 1;
+      if (Math.abs(sx - 1) < 0.001 && Math.abs(sy - 1) < 0.001) return;
+
+      isReRenderingRef.current = true;
+      const canvas = getCanvas();
+      if (!canvas) { isReRenderingRef.current = false; return; }
+
+      // Calculate new dimensions from original geo * scale (avoids bounding rect inflation)
+      const geo = data?.geo as Record<string, number> | undefined;
+      const oldW = geo?.width ?? 100;
+      const oldH = geo?.height ?? 100;
+      const w = Math.round(oldW * sx);
+      const h = Math.round(oldH * sy);
+      const br = target.getBoundingRect();
+      const left = Math.round(br.left);
+      const top = Math.round(br.top);
+      const objColor = getObjectColor(target) || color;
+      const fillStyle = data?.fillStyle as string | undefined;
+
+      let newShape: Group;
+      if (shapeType === "rect") {
+        newShape = userRoughRect(left, top, w, h, objColor, fillStyle);
+      } else {
+        newShape = userRoughEllipse(left, top, w, h, objColor, fillStyle);
+      }
+
+      // Preserve metadata
+      newShape.set({
+        data: { ...data, geo: { x: left, y: top, width: w, height: h } },
+        opacity: target.opacity,
+        selectable: true,
+        evented: true,
+        hasControls: true,
+      });
+
+      // Atomic swap
+      pauseHistory?.();
+      const idx = canvas.getObjects().indexOf(target);
+      canvas.remove(target);
+      canvas.insertAt(idx, newShape);
+      resumeHistory?.();
+
+      canvas.setActiveObject(newShape);
+      canvas.requestRenderAll();
+      isReRenderingRef.current = false;
+      saveSnapshot?.();
+    };
+
     // Attach listeners
     canvas.on("mouse:down", onMouseDown as any);
     canvas.on("mouse:move", onMouseMove as any);
     canvas.on("mouse:up", onMouseUp as any);
+    canvas.on("text:editing:exited" as any, onTextEditingExited);
+    canvas.on("object:modified", onObjectModified as any);
 
     if (isDrawingTool) {
       canvas.on("path:created" as any, onPathCreated);
@@ -557,6 +653,8 @@ export function useDrawingTools({
       canvas.off("mouse:down", onMouseDown as any);
       canvas.off("mouse:move", onMouseMove as any);
       canvas.off("mouse:up", onMouseUp as any);
+      canvas.off("text:editing:exited" as any, onTextEditingExited);
+      canvas.off("object:modified", onObjectModified as any);
       if (isDrawingTool) {
         canvas.off("path:created" as any, onPathCreated);
       }
@@ -567,5 +665,5 @@ export function useDrawingTools({
         canvasEl.removeEventListener("drop", onDrop);
       }
     };
-  }, [getCanvas, activeTool, color, brushSize, spaceDownRef, selectTool, resolvedTheme, saveSnapshot]);
+  }, [getCanvas, activeTool, color, brushSize, spaceDownRef, selectTool, resolvedTheme, saveSnapshot, pauseHistory, resumeHistory]);
 }

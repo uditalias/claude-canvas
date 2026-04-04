@@ -67,6 +67,8 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
     selectTool: toolState.selectTool,
     resolvedTheme: theme.resolved,
     saveSnapshot,
+    pauseHistory,
+    resumeHistory,
   });
 
   // Keyboard shortcuts: undo/redo, group/ungroup, zoom to selection
