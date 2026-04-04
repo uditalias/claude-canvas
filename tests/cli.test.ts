@@ -49,20 +49,20 @@ describe("CLI", () => {
     const result = runCli('draw \'{"commands":[]}\'');
     expect(result.exitCode).toBe(1);
     const output = result.stdout + result.stderr;
-    expect(output).toContain("Canvas server is not running");
+    expect(output).toContain("No canvas session is running");
   });
 
   it("screenshot without running server prints error and exits with code 1", () => {
     const result = runCli("screenshot");
     expect(result.exitCode).toBe(1);
     const output = result.stdout + result.stderr;
-    expect(output).toContain("Canvas server is not running");
+    expect(output).toContain("No canvas session is running");
   });
 
   it("clear without running server prints error and exits with code 1", () => {
     const result = runCli("clear");
     expect(result.exitCode).toBe(1);
     const output = result.stdout + result.stderr;
-    expect(output).toContain("Canvas server is not running");
+    expect(output).toContain("No canvas session is running");
   });
 });

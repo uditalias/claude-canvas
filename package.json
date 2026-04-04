@@ -2,15 +2,42 @@
   "name": "claude-canvas",
   "version": "1.0.0",
   "description": "A shared visual canvas for Claude Code",
+  "license": "MIT",
+  "author": "Udi Talias",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/uditalias/claude-canvas.git"
+  },
+  "homepage": "https://github.com/uditalias/claude-canvas#readme",
+  "bugs": {
+    "url": "https://github.com/uditalias/claude-canvas/issues"
+  },
+  "keywords": [
+    "claude",
+    "canvas",
+    "claude-code",
+    "visual",
+    "drawing",
+    "whiteboard",
+    "ai"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "bin": {
     "claude-canvas": "./dist/bin/claude-canvas.js"
   },
+  "files": [
+    "dist/",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build --config vite.config.ts",
-    "build:server": "esbuild src/bin/claude-canvas.ts src/server/index.ts --bundle --platform=node --outdir=dist --format=cjs --external:esbuild",
+    "build:server": "node scripts/build-server.js",
     "dev": "tsx src/bin/claude-canvas.ts",
     "dev:client": "vite --config vite.config.ts",
+    "prepublishOnly": "npm test && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"

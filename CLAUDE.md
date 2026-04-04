@@ -22,15 +22,22 @@ The canvas also serves as a **visual Q&A tool**: Claude can send structured ques
 
 ## CLI Usage
 
-### Basic drawing
+### Session management
+Each `start` creates an isolated canvas session with its own server and browser tab:
 ```bash
-claude-canvas start                    # Start server + open browser
+claude-canvas start                    # → { sessionId, port, url, pid }
+claude-canvas stop -s <sessionId>      # Stop a specific session
+claude-canvas stop --all               # Stop all sessions
+```
+
+### Basic drawing
+All commands accept `-s, --session <id>`. Omit if only one session is running.
+```bash
 claude-canvas draw '<DrawPayload>'     # Send draw commands
 claude-canvas draw -                   # Read DrawPayload from stdin
 claude-canvas clear                    # Clear all canvas objects
 claude-canvas clear --layer claude     # Clear only Claude's objects
 claude-canvas screenshot               # Returns JSON: { path, answers }
-claude-canvas stop                     # Stop the server
 ```
 
 ### Visual Q&A (ask command)

@@ -24,24 +24,32 @@ The canvas server must be running. Start it first:
 claude-canvas start
 ```
 
-This opens a browser window with the shared canvas. Stop it when done:
+This opens a browser window with a new canvas session and returns JSON:
+```json
+{"sessionId":"a1b2c3d4","port":7890,"url":"http://127.0.0.1:7890","pid":1234}
+```
+
+Use the `sessionId` in all subsequent commands. If only one session is running, `--session` can be omitted.
+
+Stop a specific session or all sessions when done:
 
 ```bash
-claude-canvas stop
+claude-canvas stop --session a1b2c3d4   # stop one
+claude-canvas stop --all                 # stop all
 ```
 
 ## Drawing Shapes
 
-Send draw commands as JSON:
+Send draw commands as JSON (use `--session` if multiple sessions are running):
 
 ```bash
-claude-canvas draw '{"commands": [...]}'
+claude-canvas draw --session a1b2c3d4 '{"commands": [...]}'
 ```
 
 Or pipe from stdin for large payloads:
 
 ```bash
-echo '{"commands": [...]}' | claude-canvas draw -
+echo '{"commands": [...]}' | claude-canvas draw --session a1b2c3d4 -
 ```
 
 ### DrawCommand Types
@@ -185,14 +193,16 @@ Response:
 
 ## Other Commands
 
+All commands accept `--session <id>` (or `-s <id>`). Omit it if only one session is running.
+
 ```bash
-claude-canvas clear                    # Clear all objects
-claude-canvas clear --layer claude     # Clear only Claude's objects (keep user drawings)
-claude-canvas screenshot               # Capture canvas as PNG + collect Q&A answers
-claude-canvas export -f png            # Export as PNG
-claude-canvas export -f svg            # Export as SVG
-claude-canvas export -f json           # Export as JSON (DrawCommand format)
-claude-canvas export -f png --labels   # Export with shape labels included
+claude-canvas clear --session a1b2c3d4                    # Clear all objects
+claude-canvas clear --session a1b2c3d4 --layer claude     # Clear only Claude's objects
+claude-canvas screenshot --session a1b2c3d4               # Capture canvas as PNG + collect Q&A answers
+claude-canvas export --session a1b2c3d4 -f png            # Export as PNG
+claude-canvas export --session a1b2c3d4 -f svg            # Export as SVG
+claude-canvas export --session a1b2c3d4 -f json           # Export as JSON
+claude-canvas export --session a1b2c3d4 -f png --labels   # Export with shape labels included
 ```
 
 ## Tips
