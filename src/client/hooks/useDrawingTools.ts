@@ -59,8 +59,6 @@ export function useDrawingTools({
   const dragStartRef = useRef({ x: 0, y: 0 });
   const ghostRef = useRef<FabricObject | null>(null);
   // Track if mouse:down landed on a user object (to suppress drawing)
-  const hitUserObjectRef = useRef<FabricObject | null>(null);
-  const mouseDownPosRef = useRef({ x: 0, y: 0 });
   // Object to select after tool switch effect runs
   const pendingSelectRef = useRef<FabricObject | null>(null);
 
@@ -92,7 +90,6 @@ export function useDrawingTools({
     canvas.isDrawingMode = false;
     canvas.selection = isPointer;
     isDraggingRef.current = false;
-    hitUserObjectRef.current = null;
 
     // Cursor hints per tool
     if (isPointer) {
@@ -144,22 +141,25 @@ export function useDrawingTools({
       }
     }
 
-    // Keep user objects always selectable/evented so we can detect clicks on them
-    // Except in hand mode where we don't want objects to interfere with panning
+    // Only pointer and paint tools allow interacting with existing objects.
+    // Drawing tools (shapes, lines, freehand) should draw through objects.
     const isPaint = activeTool === "paint";
+    const canInteract = isPointer || isPaint;
     const paintCursor = isPaint ? makePaintCursor(resolvedTheme === "dark" ? "white" : "black") : undefined;
     canvas.forEachObject((obj) => {
       if (isUserLayer(obj)) {
-        obj.selectable = !isHand;
-        obj.evented = !isHand;
+        obj.selectable = canInteract;
+        obj.evented = canInteract;
         obj.hoverCursor = paintCursor;
       }
     });
 
-    // Tag paths created by freehand drawing
+    // Tag paths created by freehand drawing, then switch to pointer
     const onPathCreated = (opt: { path: FabricObject }) => {
       if (opt.path) {
         tagAsUser(opt.path, "freehand");
+        pendingSelectRef.current = opt.path;
+        selectTool("pointer");
       }
     };
 
@@ -171,8 +171,6 @@ export function useDrawingTools({
       if (!canvas) return;
 
       const pointer = canvas.getScenePoint(opt.e as MouseEvent);
-      mouseDownPosRef.current = { x: pointer.x, y: pointer.y };
-
       // Paint tool: recolor the clicked object
       if (activeTool === "paint") {
         const pointer = canvas.getScenePoint(opt.e as MouseEvent);
@@ -216,17 +214,6 @@ export function useDrawingTools({
         }
         return;
       }
-
-      // If clicking on a user object while a non-pointer tool is active:
-      // DON'T draw, DON'T switch tool yet — just let Fabric handle the drag.
-      // We'll decide on mouse:up whether it was a click (switch to pointer) or drag (just move).
-      if (activeTool !== "pointer" && opt.target && isUserLayer(opt.target)) {
-        hitUserObjectRef.current = opt.target;
-        // Temporarily let Fabric handle this object for dragging
-        return;
-      }
-
-      hitUserObjectRef.current = null;
 
       if (activeTool === "text") {
         const text = new IText("", {
@@ -308,7 +295,6 @@ export function useDrawingTools({
     };
 
     const onMouseMove = (opt: { e: Event }) => {
-      if (hitUserObjectRef.current) return; // user is dragging an existing shape, don't draw
       if (!isDraggingRef.current || !ghostRef.current || spaceDownRef.current) return;
       const canvas = getCanvas();
       if (!canvas) return;
@@ -355,34 +341,6 @@ export function useDrawingTools({
     };
 
     const onMouseUp = (opt: { e: Event }) => {
-      // Handle the case where mouse:down was on a user object
-      if (hitUserObjectRef.current) {
-        const canvas = getCanvas();
-        const hitObj = hitUserObjectRef.current;
-        hitUserObjectRef.current = null;
-
-        if (canvas) {
-          // Check if it was a click (no significant drag) — switch to pointer + select
-          const pointer = canvas.getScenePoint(opt.e as MouseEvent);
-          const dx = Math.abs(pointer.x - mouseDownPosRef.current.x);
-          const dy = Math.abs(pointer.y - mouseDownPosRef.current.y);
-          if (dx < 5 && dy < 5) {
-            // Click: switch to pointer and select — store pending selection
-            // so the effect doesn't discard it
-            pendingSelectRef.current = hitObj;
-            selectTool("pointer");
-          } else {
-            // Drag: Fabric already moved the object. Restore drawing mode if freehand tool.
-            if (isDrawingTool) {
-              canvas.isDrawingMode = true;
-            }
-            canvas.discardActiveObject();
-            canvas.requestRenderAll();
-          }
-        }
-        return;
-      }
-
       if (!isDraggingRef.current || spaceDownRef.current) {
         isDraggingRef.current = false;
         return;
@@ -407,11 +365,13 @@ export function useDrawingTools({
       }
 
       // For lines/arrows, promote the ghost to the final object
+      let createdShape: FabricObject | null = null;
       if ((activeTool === "line" || activeTool === "arrow") && ghostRef.current) {
         const shape = ghostRef.current as RoughLineObject;
         shape.set({ selectable: true, evented: true });
         tagAsUser(shape, activeTool);
         ghostRef.current = null;
+        createdShape = shape;
       } else {
         // Remove ghost for rect/circle (they create a different final object)
         if (ghostRef.current) {
@@ -432,14 +392,22 @@ export function useDrawingTools({
           const shape = userRoughRect(left, top, w, h, color);
           tagAsUser(shape, "rect", { x: left, y: top, width: w, height: h });
           canvas.add(shape);
+          createdShape = shape;
         } else if (activeTool === "circle") {
           const shape = userRoughEllipse(left, top, w, h, color);
           tagAsUser(shape, "ellipse", { x: left, y: top, width: w, height: h });
           canvas.add(shape);
+          createdShape = shape;
         }
       }
 
       canvas.requestRenderAll();
+
+      // Auto-select pointer after drawing a shape
+      if (createdShape) {
+        pendingSelectRef.current = createdShape;
+        selectTool("pointer");
+      }
     };
 
     // Clipboard for copy/paste
@@ -569,17 +537,7 @@ export function useDrawingTools({
       }
     };
 
-    // For freehand tools: intercept mouse:down before Fabric starts drawing
-    // If on a user object, temporarily disable drawing mode so Fabric handles drag instead
-    const onMouseDownBefore = (opt: { e: Event; target?: FabricObject }) => {
-      if (isDrawingTool && opt.target && isUserLayer(opt.target)) {
-        canvas.isDrawingMode = false;
-        hitUserObjectRef.current = opt.target;
-      }
-    };
-
     // Attach listeners
-    canvas.on("mouse:down:before" as any, onMouseDownBefore);
     canvas.on("mouse:down", onMouseDown as any);
     canvas.on("mouse:move", onMouseMove as any);
     canvas.on("mouse:up", onMouseUp as any);
@@ -596,7 +554,6 @@ export function useDrawingTools({
     }
 
     return () => {
-      canvas.off("mouse:down:before" as any, onMouseDownBefore);
       canvas.off("mouse:down", onMouseDown as any);
       canvas.off("mouse:move", onMouseMove as any);
       canvas.off("mouse:up", onMouseUp as any);
