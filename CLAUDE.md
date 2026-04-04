@@ -15,8 +15,10 @@ The canvas also serves as a **visual Q&A tool**: Claude can send structured ques
 - **Build:** `npm run build` — builds both client (Vite) and server (esbuild)
 - **Build client only:** `npm run build:client`
 - **Build server only:** `npm run build:server`
-- **Run tests:** `npx vitest run`
+- **Run tests:** `npm test` (or `npx vitest run`)
 - **Run single test:** `npx vitest run tests/protocol.test.ts`
+- **Run E2E tests:** `npx playwright test` (requires `npm run build` first)
+- **Run all tests:** `npm test && npx playwright test`
 
 ## CLI Usage
 
@@ -158,3 +160,11 @@ Shape labels: stored on `data.label`. Rendered as floating DOM elements above th
 
 ### Path alias
 `@` maps to `src/client/` (configured in vite.config.ts and components.json).
+
+## Skill Installation
+
+Copy `src/skill/claude-canvas.md` to your Claude skills directory to enable Claude to use the canvas tool:
+
+```bash
+cp src/skill/claude-canvas.md ~/.claude/skills/
+```
