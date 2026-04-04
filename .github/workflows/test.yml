@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm install
       - run: npm test
 
   e2e-tests:
@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm install
       - run: npx playwright install chromium --with-deps
       - run: npm run build
       - run: npx playwright test
