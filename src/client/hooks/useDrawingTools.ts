@@ -34,6 +34,7 @@ interface UseDrawingToolsOptions {
   spaceDownRef: React.RefObject<boolean>;
   selectTool: (tool: ToolType) => void;
   resolvedTheme?: ResolvedTheme;
+  saveSnapshot?: () => void;
 }
 
 function isUserLayer(obj: FabricObject): boolean {
@@ -52,6 +53,7 @@ export function useDrawingTools({
   spaceDownRef,
   selectTool,
   resolvedTheme,
+  saveSnapshot,
 }: UseDrawingToolsOptions) {
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
@@ -206,6 +208,7 @@ export function useDrawingTools({
             }
           }
           canvas.requestRenderAll();
+          saveSnapshot?.();
         }
         return;
       }
@@ -603,5 +606,5 @@ export function useDrawingTools({
         canvasEl.removeEventListener("drop", onDrop);
       }
     };
-  }, [getCanvas, activeTool, color, brushSize, spaceDownRef, selectTool, resolvedTheme]);
+  }, [getCanvas, activeTool, color, brushSize, spaceDownRef, selectTool, resolvedTheme, saveSnapshot]);
 }

@@ -54,6 +54,9 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
     onCanvasReady?.(getCanvas);
   }, [getCanvas, onCanvasReady]);
 
+  const { undo, redo, saveSnapshot } = useUndoRedo({ getCanvas });
+  useSnapGuides({ getCanvas });
+
   useDrawingTools({
     getCanvas,
     activeTool: toolState.activeTool,
@@ -62,10 +65,8 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
     spaceDownRef,
     selectTool: toolState.selectTool,
     resolvedTheme: theme.resolved,
+    saveSnapshot,
   });
-
-  const { undo, redo } = useUndoRedo({ getCanvas });
-  useSnapGuides({ getCanvas });
 
   // Keyboard shortcuts: undo/redo, group/ungroup, zoom to selection
   useEffect(() => {
@@ -162,6 +163,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
       delete (labelEdit.target as any).data.label;
     }
     canvas.requestRenderAll();
+    saveSnapshot();
     setLabelEdit(null);
   };
 
@@ -475,6 +477,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
                 }
               }
               canvas.requestRenderAll();
+              saveSnapshot();
             }}
             onToggleFill={target instanceof Group ? () => {
               const canvas = getCanvas();
@@ -493,6 +496,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
               (target as Group).set("objectCaching", false);
               (target as Group).dirty = true;
               canvas.requestRenderAll();
+              saveSnapshot();
               // Re-enable caching next frame
               requestAnimationFrame(() => {
                 (target as Group).set("objectCaching", true);
@@ -529,6 +533,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
                   hasControls: isLocked,
                 });
                 canvas.requestRenderAll();
+                saveSnapshot();
               }
             }}
             onOpacityChange={(val) => {
@@ -536,6 +541,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
               if (canvas && target) {
                 target.set({ opacity: val });
                 canvas.requestRenderAll();
+                saveSnapshot();
               }
             }}
             onBringToFront={() => {
@@ -545,6 +551,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
                   canvas.bringObjectToFront(target);
                 }
                 canvas.requestRenderAll();
+                saveSnapshot();
               }
             }}
             onDuplicate={() => {
@@ -577,6 +584,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
                   canvas.sendObjectToBack(target);
                 }
                 canvas.requestRenderAll();
+                saveSnapshot();
               }
             }}
           />
