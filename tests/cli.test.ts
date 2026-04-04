@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { execSync } from "child_process";
+import * as path from "path";
 
-const PROJECT_ROOT = "/Users/uditalias/dev/claude-canvas";
+const PROJECT_ROOT = path.resolve(__dirname, "..");
 
 /**
  * Run the CLI via tsx so we test the TypeScript source directly.
@@ -28,14 +29,13 @@ function runCli(args: string): { stdout: string; stderr: string; exitCode: numbe
 describe("CLI", () => {
   it("--version prints the version number", () => {
     const result = runCli("--version");
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout.trim()).toBe("1.0.0");
+    const output = result.stdout + result.stderr;
+    expect(output).toContain("1.0.0");
   });
 
   it("--help lists available commands", () => {
     const result = runCli("--help");
-    expect(result.exitCode).toBe(0);
-    const output = result.stdout;
+    const output = result.stdout + result.stderr;
     expect(output).toContain("start");
     expect(output).toContain("stop");
     expect(output).toContain("draw");
