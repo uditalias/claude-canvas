@@ -14,8 +14,10 @@ import {
   spawnServer,
 } from "../server/process.js";
 
-import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { readFileSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
+import { resolve, dirname, join } from "node:path";
+import { homedir } from "node:os";
+import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
 declare const PACKAGE_VERSION: string;
@@ -221,10 +223,101 @@ program
       const { execSync } = await import("child_process");
       execSync("npm install -g claude-canvas@latest", { stdio: "inherit" });
       console.log(`Successfully updated to ${latest}`);
+
+      // Check if the installed skill needs updating
+      const skillDestDir = join(homedir(), ".claude", "skills", "claude-canvas");
+      const skillDest = join(skillDestDir, "SKILL.md");
+      if (existsSync(skillDest)) {
+        const skillSourceDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../src/skill/claude-canvas");
+        const skillSource = join(skillSourceDir, "SKILL.md");
+        if (existsSync(skillSource)) {
+          const installed = readFileSync(skillDest, "utf-8");
+          const bundled = readFileSync(skillSource, "utf-8");
+          if (installed !== bundled) {
+            copyFileSync(skillSource, skillDest);
+            console.log("\x1b[32m✓\x1b[0m Claude Code skill updated to the latest version.");
+          }
+        }
+      }
     } catch (err) {
       console.error("Update failed:", (err as Error).message);
       process.exit(1);
     }
+  });
+
+// ── setup ──────────────────────────────────────────────────────────────────
+program
+  .command("setup")
+  .description("Install or update the Claude Code skill for canvas")
+  .action(async () => {
+    const skillSourceDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../src/skill/claude-canvas");
+    const skillSource = join(skillSourceDir, "SKILL.md");
+    const skillDestDir = join(homedir(), ".claude", "skills", "claude-canvas");
+    const skillDest = join(skillDestDir, "SKILL.md");
+    const skillUrl = "https://github.com/uditalias/claude-canvas/blob/main/src/skill/claude-canvas/SKILL.md";
+
+    if (!existsSync(skillSource)) {
+      console.error("Skill source not found. Try reinstalling claude-canvas.");
+      process.exit(1);
+    }
+
+    const bundled = readFileSync(skillSource, "utf-8");
+    const installed = existsSync(skillDest) ? readFileSync(skillDest, "utf-8") : null;
+
+    console.log("");
+    if (installed && installed === bundled) {
+      console.log("  \x1b[1m\x1b[32m✓\x1b[0m Skill is already installed and up to date.");
+      console.log(`    \x1b[2m${skillDest}\x1b[0m`);
+      console.log("");
+      return;
+    }
+
+    const isUpdate = installed !== null;
+    console.log(isUpdate
+      ? "  \x1b[1m\x1b[33m⚡\x1b[0m A new version of the claude-canvas skill is available."
+      : "  \x1b[1m\x1b[36m✨\x1b[0m claude-canvas skill setup");
+    console.log("");
+    console.log("  The skill lets Claude Code use the canvas tool automatically.");
+    console.log("  It will be installed to:");
+    console.log(`    \x1b[36m${skillDest}\x1b[0m`);
+    console.log("");
+
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const ask = (q: string): Promise<string> =>
+      new Promise((resolve) => rl.question(q, (a) => resolve(a.trim().toLowerCase())));
+
+    const viewSkill = await ask("  Would you like to view the skill before installing? (y/N) ");
+    if (viewSkill === "y" || viewSkill === "yes") {
+      console.log("");
+      console.log(`  \x1b[4m${skillUrl}\x1b[0m`);
+      console.log("");
+    }
+
+    const action = isUpdate ? "Update" : "Install";
+    const confirm = await ask(`  ${action} the skill to ~/.claude/skills/? (Y/n) `);
+
+    if (confirm === "n" || confirm === "no") {
+      console.log("");
+      console.log("  Skipped. You can run this again anytime with:");
+      console.log("    \x1b[33mclaude-canvas setup\x1b[0m");
+      console.log("");
+    } else {
+      try {
+        mkdirSync(skillDestDir, { recursive: true });
+        copyFileSync(skillSource, skillDest);
+        console.log("");
+        console.log(`  \x1b[1m\x1b[32m✓\x1b[0m Skill ${isUpdate ? "updated" : "installed"} to \x1b[36m${skillDest}\x1b[0m`);
+        console.log("");
+      } catch (err) {
+        console.log("");
+        console.log(`  \x1b[31m✗ Failed: ${(err as Error).message}\x1b[0m`);
+        console.log("  You can install it manually:");
+        console.log(`    \x1b[33mcp -r $(npm root -g)/claude-canvas/src/skill/claude-canvas ~/.claude/skills/\x1b[0m`);
+        console.log("");
+      }
+    }
+
+    rl.close();
   });
 
 program.parse();

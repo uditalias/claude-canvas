@@ -69,7 +69,18 @@ It also serves as a **visual Q&A tool** — Claude can send structured questions
 
 ```bash
 npm install -g claude-canvas
+claude-canvas setup
 ```
+
+The `setup` command installs the Claude Code skill, which lets Claude automatically use the canvas when it makes sense.
+
+### Updating
+
+```bash
+claude-canvas update
+```
+
+This checks for the latest version, installs it, and automatically updates the Claude Code skill if it has changed.
 
 ### From source
 
@@ -79,6 +90,7 @@ cd claude-canvas
 npm install
 npm run build
 npm link  # makes `claude-canvas` available globally
+claude-canvas setup
 ```
 
 ### Requirements
@@ -365,10 +377,10 @@ Install the included skill so Claude Code automatically knows when and how to us
 ### Installation
 
 ```bash
-cp -r src/skill/claude-canvas ~/.claude/skills/
+claude-canvas setup
 ```
 
-Or if installed globally via npm:
+This interactively installs (or updates) the skill to `~/.claude/skills/claude-canvas/`. You can also install it manually:
 
 ```bash
 cp -r $(npm root -g)/claude-canvas/src/skill/claude-canvas ~/.claude/skills/
