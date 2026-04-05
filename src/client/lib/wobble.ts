@@ -11,7 +11,7 @@ export const STROKE_COLOR = "#000000";
 export const FILL_COLOR = "#B5651D";
 export const FILL_COLOR_LIGHT = "rgba(181, 101, 29, 0.35)";
 export const STROKE_WIDTH = 1.5;
-export const FONT_FAMILY = "Patrick Hand, cursive";
+export const FONT_FAMILY = "Inter, sans-serif";
 export const FILL_STYLES = ["hachure", "solid", "zigzag", "cross-hatch", "dots", "dashed", "zigzag-line", "none"] as const;
 
 // ── Lazy-init rough.js generator ────────────────────────────────────────────

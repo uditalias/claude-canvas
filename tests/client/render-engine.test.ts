@@ -114,7 +114,7 @@ vi.mock("../../src/client/lib/wobble", () => {
     STROKE_COLOR: "#000000",
     FILL_COLOR: "#B5651D",
     STROKE_WIDTH: 1.5,
-    FONT_FAMILY: "Patrick Hand, cursive",
+    FONT_FAMILY: "Inter, sans-serif",
     hexToRgba: (hex: string, alpha: number) => `rgba(0,0,0,${alpha})`,
   };
 });
@@ -227,7 +227,7 @@ describe("renderCommandsToCanvas", () => {
     expect(obj.props.left).toBe(50);
     expect(obj.props.top).toBe(100);
     expect(obj.props.fontSize).toBe(16);
-    expect(obj.props.fontFamily).toBe("Patrick Hand, cursive");
+    expect(obj.props.fontFamily).toBe("Inter, sans-serif");
     expect(obj.data.shapeType).toBe("text");
   });
 

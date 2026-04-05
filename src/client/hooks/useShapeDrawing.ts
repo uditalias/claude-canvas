@@ -121,7 +121,7 @@ export function useShapeDrawing({
         originX: "left",
         originY: "top",
         fontSize: 16 + brushSize * 2,
-        fontFamily: "Patrick Hand, cursive",
+        fontFamily: "Inter, sans-serif",
         fill: color,
         selectable: true,
         hasControls: true,
