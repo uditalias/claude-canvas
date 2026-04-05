@@ -12,6 +12,11 @@
   "bugs": {
     "url": "https://github.com/uditalias/claude-canvas/issues"
   },
+  "publishConfig": {
+    "provenance": false,
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "keywords": [
     "claude",
     "canvas",
