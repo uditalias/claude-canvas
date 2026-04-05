@@ -2,7 +2,7 @@ import { Router } from "express";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { broadcastDraw, broadcastClear, broadcastAsk, requestScreenshot, requestExport, getClientCount } from "./state.js";
+import { broadcastDraw, broadcastClear, requestAskWithAnswers, requestScreenshot, requestExport, getClientCount } from "./state.js";
 import { saveScreenshot } from "../utils/screenshot.js";
 
 const router = Router();
@@ -27,14 +27,25 @@ router.post("/api/clear", (req, res) => {
   res.json({ ok: true });
 });
 
-router.post("/api/ask", (req, res) => {
+router.post("/api/ask", async (req, res) => {
   const payload = req.body;
   if (!payload || !Array.isArray(payload.questions)) {
     res.status(400).json({ error: "Invalid AskPayload: questions array required" });
     return;
   }
-  broadcastAsk(payload);
-  res.json({ ok: true, questions: payload.questions.length });
+  try {
+    const { image, answers } = await requestAskWithAnswers(payload);
+    const filepath = saveScreenshot(image);
+    const processedAnswers = answers.map((a) => {
+      if (a.canvasSnapshot && a.canvasSnapshot.startsWith("data:")) {
+        return { ...a, canvasSnapshot: saveScreenshot(a.canvasSnapshot) };
+      }
+      return a;
+    });
+    res.json({ ok: true, status: "answered", path: filepath, answers: processedAnswers });
+  } catch (err) {
+    res.status(500).json({ ok: false, status: "disconnected", error: (err as Error).message });
+  }
 });
 
 router.get("/api/screenshot", async (_req, res) => {

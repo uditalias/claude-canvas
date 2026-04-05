@@ -285,7 +285,7 @@ describe("state", () => {
       expect(sent2).toEqual({ type: "ask", payload });
 
       // Resolve to avoid unhandled rejection
-      resolveAskAnswers([{ questionId: "q1", value: "A" }]);
+      resolveAskAnswers({ image: "data:image/png;base64,abc", answers: [{ questionId: "q1", value: "A" }] });
       return promise;
     });
 
@@ -296,11 +296,11 @@ describe("state", () => {
       const payload = { questions: [{ id: "q1", text: "Pick one", type: "single" as const, options: ["A", "B"] }] };
       const promise = requestAskWithAnswers(payload);
 
-      const answers = [{ questionId: "q1", value: "A" }];
-      resolveAskAnswers(answers);
+      const data = { image: "data:image/png;base64,abc", answers: [{ questionId: "q1", value: "A" }] };
+      resolveAskAnswers(data);
 
       const result = await promise;
-      expect(result).toEqual(answers);
+      expect(result).toEqual(data);
       expect(hasPendingAsk()).toBe(false);
     });
 
@@ -319,7 +319,7 @@ describe("state", () => {
 
     it("resolveAskAnswers is a no-op with no pending request", () => {
       // Should not throw
-      resolveAskAnswers([{ questionId: "q1", value: "A" }]);
+      resolveAskAnswers({ image: "data", answers: [{ questionId: "q1", value: "A" }] });
     });
 
     it("rejectAskAnswers is a no-op with no pending request", () => {

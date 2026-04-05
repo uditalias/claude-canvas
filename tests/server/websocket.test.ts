@@ -201,7 +201,10 @@ describe("WebSocket Server", () => {
           ws.send(
             JSON.stringify({
               type: "answers_submitted",
-              payload: [{ questionId: "q1", value: "A" }],
+              payload: {
+                image: "data:image/png;base64,ANSWERS",
+                answers: [{ questionId: "q1", value: "A" }],
+              },
             })
           );
           resolve();
@@ -209,8 +212,9 @@ describe("WebSocket Server", () => {
       });
     });
 
-    const answers = await askPromise;
-    expect(answers).toEqual([{ questionId: "q1", value: "A" }]);
+    const result = await askPromise;
+    expect(result.image).toBe("data:image/png;base64,ANSWERS");
+    expect(result.answers).toEqual([{ questionId: "q1", value: "A" }]);
   });
 
   it("rejects pending ask when client disconnects", async () => {

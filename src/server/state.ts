@@ -6,7 +6,7 @@ interface ServerState {
   pendingScreenshot: ((data: { image: string; answers: Answer[] }) => void) | null;
   pendingExport: ((data: string) => void) | null;
   pendingAsk: {
-    resolve: (answers: Answer[]) => void;
+    resolve: (data: { image: string; answers: Answer[] }) => void;
     reject: (reason: Error) => void;
   } | null;
 }
@@ -108,7 +108,7 @@ export function resolveExport(data: string): void {
   }
 }
 
-export function requestAskWithAnswers(payload: AskPayload): Promise<Answer[]> {
+export function requestAskWithAnswers(payload: AskPayload): Promise<{ image: string; answers: Answer[] }> {
   return new Promise((resolve, reject) => {
     const clients = [...state.clients].filter(
       (c) => c.readyState === WebSocket.WebSocket.OPEN
@@ -118,9 +118,9 @@ export function requestAskWithAnswers(payload: AskPayload): Promise<Answer[]> {
     }
 
     state.pendingAsk = {
-      resolve: (answers: Answer[]) => {
+      resolve: (data: { image: string; answers: Answer[] }) => {
         state.pendingAsk = null;
-        resolve(answers);
+        resolve(data);
       },
       reject: (reason: Error) => {
         state.pendingAsk = null;
@@ -132,9 +132,9 @@ export function requestAskWithAnswers(payload: AskPayload): Promise<Answer[]> {
   });
 }
 
-export function resolveAskAnswers(answers: Answer[]): void {
+export function resolveAskAnswers(data: { image: string; answers: Answer[] }): void {
   if (state.pendingAsk) {
-    state.pendingAsk.resolve(answers);
+    state.pendingAsk.resolve(data);
   }
 }
 
