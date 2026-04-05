@@ -1,11 +1,11 @@
 ---
 name: claude-canvas
-description: Draw visual diagrams, wireframes, and flowcharts on a shared canvas. Ask users visual Q&A questions with interactive answer panels.
+description: Draw visual diagrams, wireframes, and flowcharts on a shared canvas. Ask the user visual Q&A questions with interactive answer panels. Collect visual feedback instead of terminal-only text.
 ---
 
 # Claude Canvas
 
-A shared visual canvas for drawing diagrams, wireframes, flowcharts, and visual Q&A.
+A visual canvas tool for Claude Code — instead of asking questions in the terminal, draw diagrams, wireframes, and mockups on a shared canvas and collect visual feedback from the user.
 
 ## When to Use
 
@@ -15,6 +15,7 @@ Use this skill when you want to:
 - Present visual options and ask the user to choose (visual Q&A)
 - Sketch UI mockups or component layouts
 - Illustrate concepts with shapes, arrows, and text
+- Ask the user to draw or annotate on the canvas as feedback
 
 ## Prerequisites
 
@@ -52,6 +53,23 @@ Or pipe from stdin for large payloads:
 echo '{"commands": [...]}' | claude-canvas draw --session a1b2c3d4 -
 ```
 
+### DrawPayload Options
+
+The draw command accepts a JSON object with these top-level properties:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `commands` | `DrawCommand[]` | Required. Array of draw commands |
+| `narration` | `string` | Optional. Narration text that animates on screen while shapes render |
+| `animate` | `boolean` | Optional. Set `false` to render shapes instantly (default: `true`) |
+
+You can also disable animation via the CLI flag `--no-animate`.
+
+**Example with narration:**
+```bash
+claude-canvas draw '{"narration": "Here is the system architecture", "commands": [...]}'
+```
+
 ### DrawCommand Types
 
 **Shapes** (all support `label?`, `color?`, `opacity?`, `fillStyle?`):
@@ -73,7 +91,13 @@ echo '{"commands": [...]}' | claude-canvas draw --session a1b2c3d4 -
 
 | Type | Parameters | Example |
 |------|-----------|---------|
-| `text` | `x, y, content, fontSize?, textAlign?` | `{"type":"text","x":200,"y":50,"content":"Title","fontSize":24,"textAlign":"center"}` |
+| `text` | `x, y, content, fontSize?, textAlign?, fontWeight?, fontStyle?, underline?, linethrough?` | `{"type":"text","x":200,"y":50,"content":"Title","fontSize":24,"textAlign":"center"}` |
+
+Text supports rich formatting:
+- `fontWeight`: `"bold"` or `"normal"` (default)
+- `fontStyle`: `"italic"` or `"normal"` (default)
+- `underline`: `true` to underline
+- `linethrough`: `true` for strikethrough
 
 **Freehand:**
 
@@ -88,6 +112,17 @@ echo '{"commands": [...]}' | claude-canvas draw --session a1b2c3d4 -
 | `group` | `id, commands: DrawCommand[]` | `{"type":"group","id":"box-a","commands":[...]}` |
 | `connector` | `from, to, label?` | `{"type":"connector","from":"box-a","to":"box-b"}` |
 
+### Common Properties
+
+These optional properties work on all shapes, lines, and text:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `label` | `string` | Floating text label above the shape |
+| `color` | `string` | Hex color string (e.g. `"#D4726A"`). Default: muted blue |
+| `opacity` | `number` | Transparency from `0` (invisible) to `1` (opaque). Default: `1` |
+| `fillStyle` | `string` | Fill pattern for shapes (see below) |
+
 ### Fill Styles
 
 Shapes default to `"hachure"` (hand-drawn cross-hatch). Options:
@@ -98,6 +133,9 @@ Use `"none"` for wireframe outlines.
 ### Colors
 
 Pass `color` as a hex string: `"color": "#D4726A"`. Default is a muted blue.
+
+Available preset colors for reference:
+`#000000` (black), `#555555` (gray), `#D4726A` (red), `#D9925E` (orange), `#C4A73A` (yellow), `#8AAD5A` (green), `#6DBDAD` (teal), `#7198C9` (blue), `#9B85B5` (purple), `#D47C9A` (pink)
 
 ## Common Patterns
 
@@ -142,6 +180,34 @@ claude-canvas draw '{"commands": [
 ]}'
 ```
 
+### Drawing with Narration
+
+```bash
+claude-canvas draw '{"narration": "Let me show you how the components connect", "commands": [
+  {"type": "rect", "x": 100, "y": 100, "width": 180, "height": 80, "label": "Component A", "fillStyle": "hachure"},
+  {"type": "rect", "x": 400, "y": 100, "width": 180, "height": 80, "label": "Component B", "fillStyle": "solid"},
+  {"type": "arrow", "x1": 280, "y1": 140, "x2": 400, "y2": 140, "label": "data flow"}
+]}'
+```
+
+### Using Styled Text
+
+```bash
+claude-canvas draw '{"commands": [
+  {"type": "text", "x": 300, "y": 30, "content": "Architecture Overview", "fontSize": 28, "fontWeight": "bold", "textAlign": "center"},
+  {"type": "text", "x": 300, "y": 60, "content": "Draft — subject to change", "fontSize": 14, "fontStyle": "italic", "textAlign": "center", "opacity": 0.5}
+]}'
+```
+
+### Using Color and Opacity
+
+```bash
+claude-canvas draw '{"commands": [
+  {"type": "rect", "x": 50, "y": 50, "width": 200, "height": 100, "label": "Active", "color": "#8AAD5A", "fillStyle": "solid"},
+  {"type": "rect", "x": 300, "y": 50, "width": 200, "height": 100, "label": "Deprecated", "color": "#D4726A", "fillStyle": "hachure", "opacity": 0.4}
+]}'
+```
+
 ## Visual Q&A
 
 Ask the user structured questions with visual context. Each question can have its own canvas drawing.
@@ -161,6 +227,12 @@ claude-canvas ask '{"questions": [
 ]}'
 ```
 
+You can also pipe from stdin for large payloads:
+
+```bash
+echo '{"questions": [...]}' | claude-canvas ask -
+```
+
 ### Question Types
 
 | Type | Description | Answer Format |
@@ -168,7 +240,9 @@ claude-canvas ask '{"questions": [
 | `single` | Pick one option (pill buttons) | `"value": "Option A"` |
 | `multi` | Pick multiple options (toggle pills) | `"value": ["Option A", "Option C"]` |
 | `text` | Type free text | `"value": "user's text"` |
-| `canvas` | Draw on canvas as answer | `"value": "see canvas", "canvasSnapshot": "/path/to/png"` |
+| `canvas` | Draw on canvas as answer | `"value": "see canvas", "canvasSnapshot": "<base64 png>"` |
+
+Use `canvas` type when you want the user to draw, annotate, or visually modify your diagram as their answer.
 
 ### Collecting Answers
 
@@ -186,9 +260,24 @@ Response:
   "answers": [
     {"questionId": "q1", "value": "Layout A"},
     {"questionId": "q2", "value": ["Fast", "Reliable"]},
-    {"questionId": "q3", "value": "Alice"}
+    {"questionId": "q3", "value": "Alice"},
+    {"questionId": "q4", "value": "see canvas", "canvasSnapshot": "<base64 png>"}
   ]
 }
+```
+
+The `path` field contains a PNG screenshot of the canvas. For `canvas`-type questions, the `canvasSnapshot` field contains a base64-encoded PNG of what the user drew.
+
+### Multi-Question Flow
+
+You can send multiple questions in a single `ask` command. The user navigates between them using arrow buttons and each question gets its own canvas state:
+
+```bash
+claude-canvas ask '{"questions": [
+  {"id": "q1", "text": "Pick a layout", "type": "single", "options": ["A", "B"], "commands": [...]},
+  {"id": "q2", "text": "Name this feature", "type": "text", "commands": [...]},
+  {"id": "q3", "text": "Draw your changes", "type": "canvas", "commands": [...]}
+]}'
 ```
 
 ## Other Commands
@@ -214,3 +303,8 @@ claude-canvas export --session a1b2c3d4 -f png --labels   # Export with shape la
 - After drawing, call `screenshot` to capture and verify what the user sees.
 - Use `clear --layer claude` to remove your drawings without erasing user drawings.
 - Connectors automatically route between group edges — just specify `from` and `to` group IDs.
+- Use `narration` to explain what you're drawing as it appears on screen.
+- Use `--no-animate` or `"animate": false` when rendering many shapes at once for speed.
+- The user can draw, annotate, move, and resize shapes on the canvas alongside your drawings.
+- Use different `color` values to visually distinguish different parts of a diagram.
+- Use `opacity` to de-emphasize background elements or show deprecated components.

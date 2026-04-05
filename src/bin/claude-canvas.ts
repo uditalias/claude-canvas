@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import * as http from "http";
+import * as https from "https";
 import { findAvailablePort } from "../utils/port.js";
 import { openBrowser } from "../utils/open-browser.js";
 import {
@@ -199,9 +200,53 @@ program
     }
   });
 
+// ── update ──────────────────────────────────────────────────────────────────
+program
+  .command("update")
+  .description("Check for updates and install the latest version")
+  .action(async () => {
+    const currentVersion = getVersion();
+    console.log(`Current version: ${currentVersion}`);
+    console.log("Checking for updates...");
+
+    try {
+      const latest = await fetchLatestVersion();
+      if (latest === currentVersion) {
+        console.log("You are already on the latest version.");
+        return;
+      }
+      console.log(`New version available: ${latest}`);
+      console.log("Updating...");
+
+      const { execSync } = await import("child_process");
+      execSync("npm install -g claude-canvas@latest", { stdio: "inherit" });
+      console.log(`Successfully updated to ${latest}`);
+    } catch (err) {
+      console.error("Update failed:", (err as Error).message);
+      process.exit(1);
+    }
+  });
+
 program.parse();
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
+function fetchLatestVersion(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    https.get("https://registry.npmjs.org/claude-canvas/latest", (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        try {
+          const pkg = JSON.parse(data);
+          resolve(pkg.version);
+        } catch {
+          reject(new Error("Failed to parse npm registry response"));
+        }
+      });
+    }).on("error", reject);
+  });
+}
 
 function httpGet(url: string): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
