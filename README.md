@@ -5,7 +5,7 @@
 <h1 align="center">claude-canvas</h1>
 
 <p align="center">
-  <strong>A shared visual canvas for Claude Code — draw diagrams, wireframes, and flowcharts, then ask visual questions and get answers.</strong>
+  <strong>A visual canvas for Claude Code — instead of asking questions in the terminal, Claude can draw diagrams, wireframes, and mockups on a shared canvas and collect visual feedback from the user.</strong>
 </p>
 
 <p align="center">
