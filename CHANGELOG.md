@@ -1,3 +1,8 @@
+## 1.0.3 (2026-04-05)
+
+- Enhance README and CLI for claude-canvas skill installation and updates (0a474d8)
+- Update package.json to change repository URL format and adjust binary path for claude-canvas (7cfc26c)
+
 ## 1.0.2 (2026-04-05)
 
 - Update release workflow permissions and simplify npm publish command (873f440)
