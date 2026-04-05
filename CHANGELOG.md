@@ -1,3 +1,7 @@
+## 1.0.2 (2026-04-05)
+
+- Update release workflow permissions and simplify npm publish command (873f440)
+
 # Changelog
 
 ## 1.0.1 (2026-04-05)
