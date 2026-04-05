@@ -14,6 +14,7 @@ export default defineConfig({
   build: {
     outDir: "../../dist/client",
     emptyOutDir: true,
+    chunkSizeWarningLimit: 1000,
   },
   server: {
     port: 5173,
