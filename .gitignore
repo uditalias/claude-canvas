@@ -6,3 +6,4 @@ dist/
 docs/*
 !docs/screenshots/
 !docs/assets/
+.playwright-mcp/

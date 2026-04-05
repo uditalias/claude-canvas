@@ -59,6 +59,7 @@
 - **Shared drawing surface** — Claude draws via CLI, you draw interactively in the browser, both in real-time
 - **Hand-drawn aesthetic** — powered by [Rough.js](https://roughjs.com), everything looks like a natural whiteboard sketch
 - **Multiple fill styles** — hachure, solid, zigzag, cross-hatch, dots, dashed, and wireframe outlines
+- **Status badge** — Claude updates a live status message in the browser so you always know what it's working on
 - **Export** — save as PNG, SVG, or JSON
 - **Claude Code skill** — install once, Claude automatically uses the canvas when it makes sense
 
@@ -443,6 +444,14 @@ All commands accept `-s, --session <id>`. You can omit it when only one session 
 | `claude-canvas update` | Update to the latest version |
 
 Both `ask` and `draw` accept `-` to read JSON from stdin.
+
+### Status Badge
+
+Use `claude-canvas status` to show a live status message in the browser. Claude updates this automatically so you always know what it's working on:
+
+<p align="center">
+  <img src="docs/screenshots/status-line.png" alt="Status badge — shows 'Designing authentication flow...' while Claude draws a diagram" width="700" />
+</p>
 
 ---
 
