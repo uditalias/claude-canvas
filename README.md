@@ -152,10 +152,17 @@ claude-canvas draw '{"commands": [
 ]}'
 ```
 
-**4. Stop the session when done:**
+**4. List running sessions:**
 
 ```bash
-claude-canvas stop --all
+claude-canvas list
+```
+
+**5. Stop the session when done:**
+
+```bash
+claude-canvas stop --all               # Stop all sessions
+claude-canvas stop -s a1b2c3d4         # Stop a specific session
 ```
 
 ---
@@ -421,6 +428,7 @@ All commands accept `-s, --session <id>`. You can omit it when only one session 
 |---------|-------------|
 | `claude-canvas start` | Start a new canvas session (opens browser) |
 | `claude-canvas start -p 8080` | Start on a specific port |
+| `claude-canvas list` | List all running sessions |
 | `claude-canvas stop -s <id>` | Stop a specific session |
 | `claude-canvas stop --all` | Stop all running sessions |
 | `claude-canvas ask '<json>'` | Send visual questions, block until answered |

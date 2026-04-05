@@ -212,6 +212,8 @@ claude-canvas draw '{"commands": [
 
 Ask the user structured questions with visual context. Each question can have its own canvas drawing.
 
+**IMPORTANT: Make each option visually descriptive.** Don't just draw colored shapes — draw what the option actually represents. Include labels, inner text, example content, and structure so the user can understand each option at a glance without reading the question text.
+
 ```bash
 claude-canvas ask '{"questions": [
   {
@@ -220,8 +222,18 @@ claude-canvas ask '{"questions": [
     "type": "single",
     "options": ["Layout A", "Layout B"],
     "commands": [
-      {"type": "rect", "x": 80, "y": 80, "width": 200, "height": 150, "label": "Layout A"},
-      {"type": "rect", "x": 350, "y": 80, "width": 200, "height": 150, "label": "Layout B"}
+      {"type": "rect", "x": 50, "y": 80, "width": 250, "height": 200, "label": "Layout A", "fillStyle": "none", "color": "#7198C9"},
+      {"type": "rect", "x": 60, "y": 100, "width": 230, "height": 40, "fillStyle": "hachure", "color": "#7198C9"},
+      {"type": "text", "x": 175, "y": 110, "content": "Header / Nav", "textAlign": "center", "fontSize": 14},
+      {"type": "rect", "x": 60, "y": 150, "width": 70, "height": 120, "fillStyle": "hachure", "color": "#7198C9"},
+      {"type": "text", "x": 95, "y": 200, "content": "Side", "textAlign": "center", "fontSize": 12},
+      {"type": "rect", "x": 140, "y": 150, "width": 150, "height": 120, "fillStyle": "none", "color": "#7198C9"},
+      {"type": "text", "x": 215, "y": 200, "content": "Main Content", "textAlign": "center", "fontSize": 12},
+      {"type": "rect", "x": 380, "y": 80, "width": 250, "height": 200, "label": "Layout B", "fillStyle": "none", "color": "#8AAD5A"},
+      {"type": "rect", "x": 390, "y": 100, "width": 230, "height": 40, "fillStyle": "hachure", "color": "#8AAD5A"},
+      {"type": "text", "x": 505, "y": 110, "content": "Header / Nav", "textAlign": "center", "fontSize": 14},
+      {"type": "rect", "x": 390, "y": 150, "width": 230, "height": 120, "fillStyle": "none", "color": "#8AAD5A"},
+      {"type": "text", "x": 505, "y": 200, "content": "Full-Width Content", "textAlign": "center", "fontSize": 12}
     ]
   }
 ]}'
@@ -293,6 +305,9 @@ claude-canvas ask '{"questions": [
 All commands accept `--session <id>` (or `-s <id>`). Omit it if only one session is running.
 
 ```bash
+claude-canvas list                                        # List all running sessions
+claude-canvas stop --session a1b2c3d4                     # Stop a specific session
+claude-canvas stop --all                                  # Stop all sessions
 claude-canvas clear --session a1b2c3d4                    # Clear all objects
 claude-canvas clear --session a1b2c3d4 --layer claude     # Clear only Claude's objects
 claude-canvas screenshot --session a1b2c3d4               # Capture canvas as PNG + collect Q&A answers
@@ -301,6 +316,18 @@ claude-canvas export --session a1b2c3d4 -f svg            # Export as SVG
 claude-canvas export --session a1b2c3d4 -f json           # Export as JSON
 claude-canvas export --session a1b2c3d4 -f png --labels   # Export with shape labels included
 ```
+
+## Session Lifecycle
+
+Always stop the canvas session when you are done with it:
+
+```bash
+claude-canvas stop --session a1b2c3d4
+```
+
+After collecting answers from `ask` or finishing your drawing work, call `stop` to clean up the session. This frees the port and closes the browser tab.
+
+Use `claude-canvas list` to check which sessions are currently running before starting a new one.
 
 ## Tips
 
@@ -316,3 +343,5 @@ claude-canvas export --session a1b2c3d4 -f png --labels   # Export with shape la
 - The user can draw, annotate, move, and resize shapes on the canvas alongside your drawings.
 - Use different `color` values to visually distinguish different parts of a diagram.
 - Use `opacity` to de-emphasize background elements or show deprecated components.
+- **For Q&A questions**: draw the actual content each option represents, not just colored shapes. Include inner structure, labels, and example text so the user can visually compare options.
+- **Always stop sessions** when done — call `claude-canvas stop --session <id>` after collecting answers.

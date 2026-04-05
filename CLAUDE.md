@@ -26,6 +26,7 @@ The canvas also serves as a **visual Q&A tool**: Claude can send structured ques
 Each `start` creates an isolated canvas session with its own server and browser tab:
 ```bash
 claude-canvas start                    # → { sessionId, port, url, pid }
+claude-canvas list                     # List all running sessions
 claude-canvas stop -s <sessionId>      # Stop a specific session
 claude-canvas stop --all               # Stop all sessions
 ```

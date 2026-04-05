@@ -39,6 +39,7 @@ describe("CLI", () => {
     const output = result.stdout + result.stderr;
     expect(output).toContain("start");
     expect(output).toContain("stop");
+    expect(output).toContain("list");
     expect(output).toContain("draw");
     expect(output).toContain("ask");
     expect(output).toContain("clear");
@@ -65,5 +66,12 @@ describe("CLI", () => {
     expect(result.exitCode).toBe(1);
     const output = result.stdout + result.stderr;
     expect(output).toContain("No canvas session is running");
+  });
+
+  it("list with no sessions prints no sessions message", () => {
+    const result = runCli("list");
+    expect(result.exitCode).toBe(0);
+    const output = result.stdout + result.stderr;
+    expect(output).toContain("No canvas sessions running");
   });
 });
