@@ -271,6 +271,7 @@ export function useShapeDrawing({
       tagAsUser(shape, activeTool);
       ghostRef.current = null;
       createdShape = shape;
+      saveSnapshot?.();
     } else {
       // Remove ghost for rect/circle (they create a different final object)
       if (ghostRef.current) {

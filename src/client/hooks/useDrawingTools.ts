@@ -183,6 +183,7 @@ export function useDrawingTools({
     const onPathCreated = (opt: { path: FabricObject }) => {
       if (opt.path) {
         tagAsUser(opt.path, "freehand");
+        saveSnapshot?.();
         pendingSelectRef.current = opt.path;
         selectTool("pointer");
       }

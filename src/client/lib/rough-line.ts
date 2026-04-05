@@ -1,4 +1,4 @@
-import { Line, Control, Point, controlsUtils } from "fabric";
+import { Line, Control, Point, controlsUtils, classRegistry } from "fabric";
 import type { RoughGenerator } from "roughjs/bin/generator";
 
 // ── Lazy-init rough.js generator (shared with wobble.ts) ───────────────────
@@ -206,7 +206,20 @@ export class RoughLineObject extends Line {
     const matrix = this.calcOwnMatrix();
     return `<g transform="matrix(${matrix.join(" ")})">${paths}</g>`;
   }
+
+  static type = "RoughLineObject";
+
+  static async fromObject(object: any): Promise<RoughLineObject> {
+    return new RoughLineObject([object.x1, object.y1, object.x2, object.y2], {
+      ...object,
+      strokeColor: object.strokeColor,
+      roughness: object.roughness,
+      seed: object.seed,
+    });
+  }
 }
+
+classRegistry.setClass(RoughLineObject);
 
 // ── RoughArrowObject ───────────────────────────────────────────────────────
 
@@ -343,4 +356,17 @@ export class RoughArrowObject extends Line {
     const matrix = this.calcOwnMatrix();
     return `<g transform="matrix(${matrix.join(" ")})">${paths}</g>`;
   }
+
+  static type = "RoughArrowObject";
+
+  static async fromObject(object: any): Promise<RoughArrowObject> {
+    return new RoughArrowObject([object.x1, object.y1, object.x2, object.y2], {
+      ...object,
+      strokeColor: object.strokeColor,
+      roughness: object.roughness,
+      seed: object.seed,
+    });
+  }
 }
+
+classRegistry.setClass(RoughArrowObject);
