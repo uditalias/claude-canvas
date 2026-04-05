@@ -1,3 +1,7 @@
+## 1.0.4 (2026-04-05)
+
+- Update package.json and release workflow for improved configuration (1cf530c)
+
 ## 1.0.3 (2026-04-05)
 
 - Enhance README and CLI for claude-canvas skill installation and updates (0a474d8)
