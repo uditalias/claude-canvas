@@ -4,6 +4,7 @@ const { execSync } = require("child_process");
 const { readFileSync, writeFileSync, existsSync } = require("fs");
 const { resolve } = require("path");
 const { tmpdir } = require("os");
+const readline = require("readline");
 
 const root = resolve(__dirname, "..");
 const pkgPath = resolve(root, "package.json");
@@ -102,18 +103,45 @@ function updateChangelog(entry) {
 
 // ── main ────────────────────────────────────────────────────────────────────
 
-function main() {
-  const arg = process.argv[2];
-  if (!arg || arg === "--help" || arg === "-h") {
-    console.log("Usage: node scripts/release.js <patch|minor|major|x.y.z>");
-    process.exit(0);
-  }
-
+async function main() {
   // 1. Resolve version
   const pkg = readPkg();
   const currentVersion = pkg.version;
-  const nextVersion = resolveVersion(arg, currentVersion);
-  console.log(`\nReleasing ${pkg.version} → ${nextVersion}\n`);
+
+  const parts = currentVersion.split(".").map(Number);
+  const choices = {
+    patch: [parts[0], parts[1], parts[2] + 1].join("."),
+    minor: [parts[0], parts[1] + 1, 0].join("."),
+    major: [parts[0] + 1, 0, 0].join("."),
+  };
+
+  console.log(`\nCurrent version: ${currentVersion}\n`);
+  console.log(`  1) patch → ${choices.patch}`);
+  console.log(`  2) minor → ${choices.minor}`);
+  console.log(`  3) major → ${choices.major}`);
+  console.log(`  4) custom\n`);
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const ask = (q) => new Promise((res) => rl.question(q, res));
+
+  const choice = await ask("Select version bump [1-4]: ");
+
+  let nextVersion;
+  switch (choice.trim()) {
+    case "1": nextVersion = choices.patch; break;
+    case "2": nextVersion = choices.minor; break;
+    case "3": nextVersion = choices.major; break;
+    case "4": {
+      const custom = await ask("Enter version (x.y.z): ");
+      if (!SEMVER_RE.test(custom.trim())) { rl.close(); die(`Invalid version: "${custom.trim()}"`); }
+      nextVersion = custom.trim();
+      break;
+    }
+    default: rl.close(); die(`Invalid choice: "${choice.trim()}"`);
+  }
+  rl.close();
+
+  console.log(`\nReleasing ${currentVersion} → ${nextVersion}\n`);
 
   // 2. Run tests
   console.log("── Running tests ──");
@@ -170,4 +198,4 @@ function main() {
   console.log(`  git push && git push --tags\n`);
 }
 
-main();
+main().catch((err) => { console.error(err); process.exit(1); });
