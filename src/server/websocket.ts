@@ -1,6 +1,6 @@
 import * as WebSocket from "ws";
 import * as http from "http";
-import { addClient, removeClient, resolveScreenshot, resolveExport } from "./state.js";
+import { addClient, removeClient, resolveScreenshot, resolveExport, resolveAskAnswers, rejectAskAnswers, hasPendingAsk } from "./state.js";
 
 export function attachWebSocket(server: http.Server): WebSocket.WebSocketServer {
   const wss = new WebSocket.WebSocketServer({ server });
@@ -21,13 +21,23 @@ export function attachWebSocket(server: http.Server): WebSocket.WebSocketServer 
         if (msg.type === "export_response" && msg.payload) {
           resolveExport(msg.payload as string);
         }
+        if (msg.type === "answers_submitted" && msg.payload) {
+          resolveAskAnswers(msg.payload);
+        }
       } catch {
         // ignore malformed messages
       }
     });
 
-    ws.on("close", () => removeClient(ws));
-    ws.on("error", () => removeClient(ws));
+    const onDisconnect = () => {
+      removeClient(ws);
+      if (hasPendingAsk()) {
+        rejectAskAnswers("Browser disconnected before answers were submitted");
+      }
+    };
+
+    ws.on("close", onDisconnect);
+    ws.on("error", onDisconnect);
   });
 
   return wss;
