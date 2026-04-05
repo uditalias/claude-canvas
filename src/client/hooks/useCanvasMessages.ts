@@ -173,6 +173,10 @@ export function useCanvasMessages(opts: UseCanvasMessagesOpts) {
           }
           sendRef.current?.({ type: "export_response", payload: data });
         }
+      } else if (msg.type === "status") {
+        window.dispatchEvent(
+          new CustomEvent("canvas-status", { detail: msg.payload as string })
+        );
       } else if (msg.type === "screenshot_request") {
         void handleScreenshotRequest();
       }

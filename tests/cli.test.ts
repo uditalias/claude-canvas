@@ -40,6 +40,7 @@ describe("CLI", () => {
     expect(output).toContain("start");
     expect(output).toContain("stop");
     expect(output).toContain("list");
+    expect(output).toContain("status");
     expect(output).toContain("draw");
     expect(output).toContain("ask");
     expect(output).toContain("clear");
@@ -63,6 +64,13 @@ describe("CLI", () => {
 
   it("clear without running server prints error and exits with code 1", () => {
     const result = runCli("clear");
+    expect(result.exitCode).toBe(1);
+    const output = result.stdout + result.stderr;
+    expect(output).toContain("No canvas session is running");
+  });
+
+  it("status without running server prints error and exits with code 1", () => {
+    const result = runCli("status 'Drawing...'");
     expect(result.exitCode).toBe(1);
     const output = result.stdout + result.stderr;
     expect(output).toContain("No canvas session is running");

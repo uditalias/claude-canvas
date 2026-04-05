@@ -436,6 +436,7 @@ All commands accept `-s, --session <id>`. You can omit it when only one session 
 | `claude-canvas draw --no-animate '<json>'` | Draw without animation |
 | `claude-canvas clear` | Clear all objects from the canvas |
 | `claude-canvas clear --layer claude` | Clear only Claude's objects |
+| `claude-canvas status '<text>'` | Update status badge in browser |
 | `claude-canvas screenshot` | Capture canvas as PNG |
 | `claude-canvas export -f png\|svg\|json` | Export canvas in various formats |
 | `claude-canvas setup` | Install/update the Claude Code skill |

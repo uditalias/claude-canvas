@@ -306,6 +306,8 @@ All commands accept `--session <id>` (or `-s <id>`). Omit it if only one session
 
 ```bash
 claude-canvas list                                        # List all running sessions
+claude-canvas status 'Drawing architecture...'            # Update status badge in browser
+claude-canvas status ''                                   # Clear status (resets to "Connected")
 claude-canvas stop --session a1b2c3d4                     # Stop a specific session
 claude-canvas stop --all                                  # Stop all sessions
 claude-canvas clear --session a1b2c3d4                    # Clear all objects
@@ -316,6 +318,23 @@ claude-canvas export --session a1b2c3d4 -f svg            # Export as SVG
 claude-canvas export --session a1b2c3d4 -f json           # Export as JSON
 claude-canvas export --session a1b2c3d4 -f png --labels   # Export with shape labels included
 ```
+
+## Status Updates
+
+Send status messages to the canvas badge so the user knows what's happening:
+
+```bash
+claude-canvas status 'Drawing architecture diagram...'
+claude-canvas status 'Waiting for your answers...'
+claude-canvas status 'Processing responses...'
+claude-canvas status ''    # Clear — resets to "Connected"
+```
+
+The status text appears in the top badge next to the green connection dot. Use it at key moments:
+- Before drawing: `claude-canvas status 'Drawing diagram...'`
+- Before asking: `claude-canvas status 'Waiting for your answers...'`
+- After collecting answers: `claude-canvas status 'Processing your feedback...'`
+- When done: clear the status or stop the session
 
 ## Session Lifecycle
 

@@ -14,15 +14,27 @@ import { Minus, Plus, Maximize, Download, Undo2, Redo2 } from "lucide-react";
 const POPPINS_STYLE = { fontFamily: "'Poppins', sans-serif" };
 
 export function Hud() {
-  const [status, setStatus] = useState<"connected" | "disconnected">("disconnected");
+  const [wsStatus, setWsStatus] = useState<"connected" | "disconnected">("disconnected");
+  const [statusText, setStatusText] = useState<string>("");
 
   useEffect(() => {
-    const handler = (e: Event) => {
-      setStatus((e as CustomEvent).detail);
+    const wsHandler = (e: Event) => {
+      setWsStatus((e as CustomEvent).detail);
     };
-    window.addEventListener("ws-status", handler);
-    return () => window.removeEventListener("ws-status", handler);
+    const statusHandler = (e: Event) => {
+      setStatusText((e as CustomEvent).detail || "");
+    };
+    window.addEventListener("ws-status", wsHandler);
+    window.addEventListener("canvas-status", statusHandler);
+    return () => {
+      window.removeEventListener("ws-status", wsHandler);
+      window.removeEventListener("canvas-status", statusHandler);
+    };
   }, []);
+
+  const displayText = wsStatus === "disconnected"
+    ? "reconnecting..."
+    : statusText || "Connected";
 
   return (
     <div
@@ -31,12 +43,14 @@ export function Hud() {
     >
       <span
         className={`inline-block w-1.5 h-1.5 rounded-full ${
-          status === "connected" ? "bg-green-500 animate-pulse" : "bg-red-400"
+          wsStatus === "connected" ? "bg-green-500 animate-pulse" : "bg-red-400"
         }`}
       />
       <span className="text-foreground/70 font-medium tracking-wide">claude-canvas</span>
-      {status === "disconnected" && (
-        <span className="text-muted-foreground/60 ml-0.5">reconnecting...</span>
+      {wsStatus === "connected" && statusText ? (
+        <span className="ml-0.5 shimmer-text">{statusText}</span>
+      ) : (
+        <span className="text-muted-foreground/60 ml-0.5">{displayText}</span>
       )}
     </div>
   );

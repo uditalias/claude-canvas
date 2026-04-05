@@ -126,6 +126,18 @@ program
     }))));
   });
 
+// ── status ─────────────────────────────────────────────────────────────────
+program
+  .command("status")
+  .description("Send a status message to the canvas dashboard")
+  .argument("<text>", "Status text to display (use empty string to clear)")
+  .option("-s, --session <id>", "Session ID")
+  .action(async (text: string, opts: { session?: string }) => {
+    const { session } = resolveSession(opts.session);
+    const res = await httpPost(`http://127.0.0.1:${session.port}/api/status`, { text });
+    console.log(JSON.stringify(res));
+  });
+
 // ── draw ────────────────────────────────────────────────────────────────────
 program
   .command("draw")

@@ -38,6 +38,7 @@ claude-canvas draw '<DrawPayload>'     # Send draw commands
 claude-canvas draw -                   # Read DrawPayload from stdin
 claude-canvas clear                    # Clear all canvas objects
 claude-canvas clear --layer claude     # Clear only Claude's objects
+claude-canvas status '<text>'          # Update status badge in browser
 claude-canvas screenshot               # Returns JSON: { path, answers }
 ```
 

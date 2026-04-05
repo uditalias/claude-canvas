@@ -52,6 +52,6 @@ export interface ExportRequestPayload {
 }
 
 export interface WsMessage {
-  type: "draw" | "screenshot_request" | "screenshot_response" | "clear" | "ask" | "export_request" | "export_response" | "answers_submitted";
+  type: "draw" | "screenshot_request" | "screenshot_response" | "clear" | "ask" | "export_request" | "export_response" | "answers_submitted" | "status";
   payload?: DrawPayload | string | ScreenshotResponsePayload | AskPayload | ExportRequestPayload | null;
 }

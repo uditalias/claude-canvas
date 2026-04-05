@@ -148,6 +148,10 @@ export function hasPendingAsk(): boolean {
   return state.pendingAsk !== null;
 }
 
+export function broadcastStatus(text: string): void {
+  broadcast(JSON.stringify({ type: "status", payload: text }));
+}
+
 export function getClientCount(): number {
   return state.clients.size;
 }

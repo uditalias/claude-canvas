@@ -107,6 +107,32 @@ describe("Server Router", () => {
     expect(res.body.error).toMatch(/commands array required/);
   });
 
+  // --- POST /api/status ---
+
+  it("POST /api/status with valid text returns ok", async () => {
+    const res = await request("POST", `${baseUrl}/api/status`, { text: "Drawing diagram..." });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ok: true });
+  });
+
+  it("POST /api/status with empty string returns ok", async () => {
+    const res = await request("POST", `${baseUrl}/api/status`, { text: "" });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ok: true });
+  });
+
+  it("POST /api/status returns 400 when text is missing", async () => {
+    const res = await request("POST", `${baseUrl}/api/status`, {});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/text string required/);
+  });
+
+  it("POST /api/status returns 400 when text is not a string", async () => {
+    const res = await request("POST", `${baseUrl}/api/status`, { text: 123 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/text string required/);
+  });
+
   // --- POST /api/clear ---
 
   it("POST /api/clear returns ok", async () => {

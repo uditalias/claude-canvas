@@ -2,7 +2,7 @@ import { Router } from "express";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { broadcastDraw, broadcastClear, requestAskWithAnswers, requestScreenshot, requestExport, getClientCount } from "./state.js";
+import { broadcastDraw, broadcastClear, broadcastStatus, requestAskWithAnswers, requestScreenshot, requestExport, getClientCount } from "./state.js";
 import { saveScreenshot } from "../utils/screenshot.js";
 
 const router = Router();
@@ -19,6 +19,16 @@ router.post("/api/draw", (req, res) => {
   }
   broadcastDraw(payload);
   res.json({ ok: true, commands: payload.commands.length });
+});
+
+router.post("/api/status", (req, res) => {
+  const { text } = req.body || {};
+  if (typeof text !== "string") {
+    res.status(400).json({ error: "Invalid status: text string required" });
+    return;
+  }
+  broadcastStatus(text);
+  res.json({ ok: true });
 });
 
 router.post("/api/clear", (req, res) => {

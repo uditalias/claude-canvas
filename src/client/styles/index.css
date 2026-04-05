@@ -136,3 +136,40 @@ body,
   height: 100%;
   overflow: hidden;
 }
+
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    oklch(0.556 0 0) 0%,
+    oklch(0.556 0 0) 45%,
+    oklch(0.145 0 0) 50%,
+    oklch(0.556 0 0) 55%,
+    oklch(0.556 0 0) 100%
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2.5s linear infinite;
+}
+
+.dark .shimmer-text {
+  background: linear-gradient(
+    90deg,
+    oklch(0.556 0 0) 0%,
+    oklch(0.556 0 0) 45%,
+    oklch(0.985 0 0) 50%,
+    oklch(0.556 0 0) 55%,
+    oklch(0.556 0 0) 100%
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2.5s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -33% 0; }
+}
