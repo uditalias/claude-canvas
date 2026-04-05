@@ -1,3 +1,7 @@
+## 1.0.11 (2026-04-05)
+
+- Enhance canvas functionality with centerContent feature (f69babe)
+
 ## 1.0.10 (2026-04-05)
 
 - Add logo to submission confirmation in App component (edb7bcc)
