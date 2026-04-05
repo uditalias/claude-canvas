@@ -15,6 +15,7 @@ import {
   Monitor,
   HelpCircle,
 } from "lucide-react";
+import LogoSvg from "../assets/logo.svg?raw";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { Slider } from "./ui/slider";
 import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
@@ -96,6 +97,15 @@ export function Toolbox({ activeTool, selectTool, color, setColor, brushSize, se
       className="flex flex-col items-center w-[52px] min-w-[52px] h-full bg-white dark:bg-[#232328] border-r border-gray-200 dark:border-[#333338] py-3 gap-0.5 z-50 select-none"
       style={POPPINS_STYLE}
     >
+      {/* Logo */}
+      <div
+        className="w-10 h-10 flex items-center justify-center text-gray-700 dark:text-gray-300 mb-1"
+        dangerouslySetInnerHTML={{ __html: LogoSvg }}
+      />
+
+      {/* Separator */}
+      <div className="w-7 h-px bg-gray-200 dark:bg-[#333338] my-1.5" />
+
       {/* Drawing tools group */}
       <div className="flex flex-col items-center gap-0.5">
         {DRAWING_TOOLS.map(({ type, icon, label }) => (
