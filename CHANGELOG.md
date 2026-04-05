@@ -1,3 +1,8 @@
+## 1.0.12 (2026-04-05)
+
+- Refactor canvas command structure and add utility functions (6902aaf)
+- Update README and .gitignore; add status badge feature (faf87da)
+
 ## 1.0.11 (2026-04-05)
 
 - Enhance canvas functionality with centerContent feature (f69babe)
