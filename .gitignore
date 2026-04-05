@@ -3,4 +3,6 @@
 node_modules/
 dist/
 *.tsbuildinfo
-docs/
+docs/*
+!docs/screenshots/
+!docs/assets/

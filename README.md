@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src/client/assets/logo.svg" alt="claude-canvas logo" width="80" height="80" />
+  <img src="docs/assets/claude_canvas_art_2.png" alt="claude-canvas" width="600" />
 </p>
 
 <h1 align="center">claude-canvas</h1>
@@ -13,8 +13,6 @@
   <a href="https://github.com/uditalias/claude-canvas/blob/main/LICENSE"><img src="https://img.shields.io/github/license/uditalias/claude-canvas?style=for-the-badge&color=blue" alt="License" /></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D18-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js" /></a>
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/typescript-5.4-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
-  <a href="https://github.com/uditalias/claude-canvas"><img src="https://img.shields.io/github/stars/uditalias/claude-canvas?style=for-the-badge&logo=github&color=181717" alt="GitHub stars" /></a>
-  <a href="https://www.npmjs.com/package/claude-canvas"><img src="https://img.shields.io/npm/dm/claude-canvas?style=for-the-badge&logo=npm&logoColor=white&color=purple" alt="npm downloads" /></a>
   <a href="https://github.com/uditalias/claude-canvas/issues"><img src="https://img.shields.io/github/issues/uditalias/claude-canvas?style=for-the-badge&logo=github&color=orange" alt="Issues" /></a>
 </p>
 
