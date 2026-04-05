@@ -168,23 +168,9 @@ The `ask` command **blocks until you click Done**, then returns all answers and 
 
 ### The Flow
 
-```
-Claude runs:  claude-canvas ask '{"questions": [...]}'
-                    │
-                    ▼
-         ┌──────────────────┐
-         │  Browser opens   │
-         │  question panel  │
-         │  with drawings   │
-         └────────┬─────────┘
-                  │  User answers questions
-                  │  and clicks Done
-                  ▼
-         Claude receives:
-         { ok: true, status: "answered",
-           path: "screenshot.png",
-           answers: [...] }
-```
+<p align="center">
+  <img src="docs/screenshots/qa-flow-diagram.png" alt="Visual Q&A flow — Claude asks, user answers, answers returned automatically" width="500" />
+</p>
 
 <p align="center">
   <img src="docs/screenshots/ui-ask.png" alt="Visual Q&A — Claude draws layout options, user picks one" width="700" />
@@ -453,25 +439,8 @@ Both `ask` and `draw` accept `-` to read JSON from stdin.
 
 ## Architecture
 
-```
-                    ┌─────────────────┐
-                    │  Claude Code    │
-                    │  (CLI / Skill)  │
-                    └────────┬────────┘
-                             │ HTTP API
-                    ┌────────▼────────┐
-                    │  Express Server │
-                    │  + WebSocket    │
-                    └────────┬────────┘
-                             │ WebSocket
-                    ┌────────▼────────┐
-                    │  Browser Canvas │
-                    │  React + Fabric │
-                    └─────────────────┘
-```
-
 <p align="center">
-  <img src="docs/screenshots/architecture-diagram.png" alt="Architecture diagram drawn on claude-canvas" width="700" />
+  <img src="docs/screenshots/architecture-flow.png" alt="Architecture — Claude Code sends commands via HTTP API to Express server, which syncs with browser canvas over WebSocket" width="600" />
 </p>
 
 <details>
