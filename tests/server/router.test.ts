@@ -123,27 +123,17 @@ describe("Server Router", () => {
 
   // --- POST /api/ask ---
 
-  it("POST /api/ask with valid questions returns ok", async () => {
+  it("POST /api/ask returns 500 with disconnect status when no clients", async () => {
     const payload = {
       questions: [
-        {
-          id: "q1",
-          text: "Pick one",
-          type: "single",
-          options: ["A", "B"],
-          commands: [],
-        },
-        {
-          id: "q2",
-          text: "Type something",
-          type: "text",
-          commands: [],
-        },
+        { id: "q1", text: "Pick one", type: "single", options: ["A", "B"], commands: [] },
       ],
     };
     const res = await request("POST", `${baseUrl}/api/ask`, payload);
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ ok: true, questions: 2 });
+    expect(res.status).toBe(500);
+    expect(res.body.ok).toBe(false);
+    expect(res.body.status).toBe("disconnected");
+    expect(res.body.error).toMatch(/No browser clients connected/);
   });
 
   it("POST /api/ask returns 400 when questions array is missing", async () => {
