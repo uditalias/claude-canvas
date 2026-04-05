@@ -28,9 +28,10 @@ function runCli(args: string): { stdout: string; stderr: string; exitCode: numbe
 
 describe("CLI", () => {
   it("--version prints the version number", () => {
+    const pkg = JSON.parse(require("fs").readFileSync(path.resolve(PROJECT_ROOT, "package.json"), "utf-8"));
     const result = runCli("--version");
     const output = result.stdout + result.stderr;
-    expect(output).toContain("1.0.0");
+    expect(output).toContain(pkg.version);
   });
 
   it("--help lists available commands", () => {
