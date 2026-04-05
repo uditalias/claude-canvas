@@ -15,6 +15,7 @@ export function App() {
   const theme = useTheme();
   const [showShortcuts, setShowShortcuts] = useState(false);
   const getCanvasRef = useRef<() => Canvas | null>(() => null);
+  const submitAnswersRef = useRef<(() => Promise<void>) | null>(null);
 
   const questionPanel = useQuestionPanel({
     getCanvas: () => getCanvasRef.current(),
@@ -54,6 +55,7 @@ export function App() {
             getAllAnswers={questionPanel.getAllAnswers}
             getQuestionsState={questionPanel.getQuestionsState}
             onCanvasReady={(gc) => { getCanvasRef.current = gc; }}
+            onSubmitAnswersReady={(fn) => { submitAnswersRef.current = fn; }}
           />
           {questionPanel.isOpen && questionPanel.current && (
             <QuestionPanel
@@ -70,7 +72,10 @@ export function App() {
               })}
               onNavigate={questionPanel.navigateTo}
               onAnswer={questionPanel.setAnswer}
-              onDone={questionPanel.close}
+              onDone={async () => {
+                await submitAnswersRef.current?.();
+                questionPanel.close();
+              }}
             />
           )}
         </div>

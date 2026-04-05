@@ -1,12 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { httpPost, httpGet } from "../helpers";
+import { httpPost } from "../helpers";
 
-test("multi-question Q&A with navigation and different types", async ({ page }) => {
+test("multi-question Q&A blocks until Done and returns all answers", async ({ page }) => {
   await page.goto("/");
   await page.waitForTimeout(1000);
 
-  // Send ask command with 3 questions of different types
-  const askResult = await httpPost("http://127.0.0.1:7890/api/ask", {
+  // Fire ask — blocks until Done
+  const askPromise = httpPost("http://127.0.0.1:7890/api/ask", {
     questions: [
       {
         id: "q1",
@@ -30,72 +30,51 @@ test("multi-question Q&A with navigation and different types", async ({ page }) 
       },
     ],
   });
-  expect(askResult.ok).toBe(true);
 
-  // Wait for question panel to appear
+  // Wait for question panel
   await page.waitForTimeout(1500);
-
-  // Q1 should be visible
   await expect(page.getByText("Pick a color")).toBeVisible({ timeout: 5000 });
 
-  // Answer Q1: click "Blue" pill button
+  // Answer Q1
   await page.getByText("Blue").last().click();
 
-  // Navigate to Q2: click the next button (ChevronRight)
-  // The navigation has: [prev button] [counter "1/3"] [next button]
-  // The next button is the one after the counter text
+  // Navigate to Q2
   const nextButton = page.locator("button").filter({ hasText: "" }).filter({
     has: page.locator('svg.lucide-chevron-right'),
   });
   await nextButton.click();
-
-  // Verify Q2 is visible
   await expect(page.getByText("Select features")).toBeVisible({ timeout: 3000 });
 
-  // Answer Q2: click "Fast" and "Reliable" (multi-select)
+  // Answer Q2
   await page.getByText("Fast").last().click();
   await page.getByText("Reliable").last().click();
 
   // Navigate to Q3
   await nextButton.click();
-
-  // Verify Q3 is visible
   await expect(page.getByText("Enter your name")).toBeVisible({ timeout: 3000 });
 
-  // Answer Q3: fill the text input
+  // Answer Q3
   await page.locator('input[placeholder="Type your answer..."]').fill("Alice");
 
-  // Click Done button
+  // Click Done
   const doneBtn = page.getByTitle("Submit answers");
   await doneBtn.click();
 
-  // Wait for panel to close and answers to be registered
-  await page.waitForTimeout(2000);
+  // Ask request should resolve with all answers
+  const result = await askPromise;
+  expect(result.ok).toBe(true);
+  expect(result.status).toBe("answered");
+  expect(result.path).toMatch(/\.png$/);
+  expect(result.answers).toHaveLength(3);
 
-  // Verify the question panel is no longer visible
-  await expect(page.getByText("Enter your name")).not.toBeVisible({ timeout: 5000 });
-
-  // Take screenshot to get answers
-  const screenshotResult = await httpGet("http://127.0.0.1:7890/api/screenshot");
-  expect(screenshotResult.ok).toBe(true);
-  expect(screenshotResult.path).toMatch(/\.png$/);
-  expect(screenshotResult.answers).toBeDefined();
-  expect(screenshotResult.answers).toHaveLength(3);
-
-  // Verify q1 answer
-  const a1 = screenshotResult.answers.find((a: { questionId: string }) => a.questionId === "q1");
-  expect(a1).toBeDefined();
+  const a1 = result.answers.find((a: any) => a.questionId === "q1");
   expect(a1.value).toBe("Blue");
 
-  // Verify q2 answer (multi-select returns array)
-  const a2 = screenshotResult.answers.find((a: { questionId: string }) => a.questionId === "q2");
-  expect(a2).toBeDefined();
+  const a2 = result.answers.find((a: any) => a.questionId === "q2");
   expect(Array.isArray(a2.value)).toBe(true);
   expect(a2.value).toContain("Fast");
   expect(a2.value).toContain("Reliable");
 
-  // Verify q3 answer
-  const a3 = screenshotResult.answers.find((a: { questionId: string }) => a.questionId === "q3");
-  expect(a3).toBeDefined();
+  const a3 = result.answers.find((a: any) => a.questionId === "q3");
   expect(a3.value).toBe("Alice");
 });

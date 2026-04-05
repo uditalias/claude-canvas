@@ -5,7 +5,7 @@
 <h1 align="center">claude-canvas</h1>
 
 <p align="center">
-  <strong>A visual canvas for Claude Code — instead of asking questions in the terminal, Claude can draw diagrams, wireframes, and mockups on a shared canvas and collect visual feedback from the user.</strong>
+  <strong>Give Claude Code eyes and a whiteboard. Claude draws diagrams, wireframes, and mockups on a shared canvas, asks visual questions, and collects your feedback — all without leaving the terminal.</strong>
 </p>
 
 <p align="center">
@@ -19,47 +19,52 @@
 <p align="center">
   <a href="#installation">Installation</a> &bull;
   <a href="#quick-start">Quick Start</a> &bull;
-  <a href="#cli-reference">CLI Reference</a> &bull;
-  <a href="#visual-qa">Visual Q&A</a> &bull;
+  <a href="#visual-qa--ask">Visual Q&A</a> &bull;
+  <a href="#drawing">Drawing</a> &bull;
   <a href="#interactive-canvas">Interactive Canvas</a> &bull;
   <a href="#claude-code-skill">Claude Code Skill</a> &bull;
-  <a href="#architecture">Architecture</a>
+  <a href="#cli-reference">CLI Reference</a>
 </p>
 
 ---
 
 ## What is claude-canvas?
 
-**claude-canvas** gives [Claude Code](https://claude.ai/code) a visual canvas. It runs a local server that opens a browser-based drawing surface where Claude can send draw commands (shapes, arrows, text, freehand paths) via CLI or HTTP API, and users can draw interactively too. Communication happens in real-time over WebSocket.
+[Claude Code](https://claude.ai/code) is powerful, but it's stuck in text. When Claude needs to show you a layout, compare design options, or ask "which of these do you prefer?" — a terminal isn't enough.
 
-It also serves as a **visual Q&A tool** — Claude can send structured questions alongside canvas drawings, and users answer by picking options, typing text, or drawing directly on the canvas.
+**claude-canvas** is a shared visual canvas that lets Claude **draw diagrams and ask visual questions**, and lets you **answer by clicking, typing, or drawing** — right in the browser.
+
+<p align="center">
+  <img src="docs/screenshots/ui-ask.png" alt="Visual Q&A — Claude draws layout options, user picks one" width="700" />
+</p>
+
+### What it solves
+
+- **"Which layout do you prefer?"** — Claude draws the options, you click your choice
+- **"What should this look like?"** — Claude sketches a wireframe, you annotate it
+- **"Here's the architecture"** — Claude draws a diagram you can actually see, not ASCII art
+- **"Name this feature"** — Claude shows context on canvas, you type your answer
+
+### How It Works
+
+1. **`claude-canvas start`** — opens a browser tab with a shared canvas
+2. **Claude draws** diagrams, wireframes, or mockups on the canvas
+3. **Claude asks** visual questions — a floating panel appears with your options
+4. **You answer** by clicking choices, typing text, or drawing on the canvas
+5. **Claude gets your answers** automatically when you click Done — no extra steps
+
+### Key Features
+
+- **Visual Q&A** — structured questions with per-question canvas drawings, answers returned automatically
+- **Shared drawing surface** — Claude draws via CLI, you draw interactively in the browser, both in real-time
+- **Hand-drawn aesthetic** — powered by [Rough.js](https://roughjs.com), everything looks like a natural whiteboard sketch
+- **Multiple fill styles** — hachure, solid, zigzag, cross-hatch, dots, dashed, and wireframe outlines
+- **Export** — save as PNG, SVG, or JSON
+- **Claude Code skill** — install once, Claude automatically uses the canvas when it makes sense
 
 <p align="center">
   <img src="docs/screenshots/ui-drawing.png" alt="claude-canvas UI — architecture diagram with toolbar and canvas" width="700" />
 </p>
-
-### Key Features
-
-- **Sketchy hand-drawn aesthetic** — powered by [Rough.js](https://roughjs.com), all shapes render with a natural, whiteboard feel
-- **Bidirectional drawing** — Claude draws via CLI/API, users draw interactively in the browser
-- **Visual Q&A system** — ask structured questions with per-question canvas drawings, collect answers programmatically
-- **Multiple fill styles** — hachure, solid, zigzag, cross-hatch, dots, dashed, and wireframe outlines
-- **Session management** — run multiple isolated canvas sessions simultaneously
-- **Real-time sync** — WebSocket-powered instant updates between CLI and browser
-- **Export options** — save as PNG, SVG, or JSON
-- **Claude Code skill** — install the skill so Claude automatically knows when and how to use the canvas
-
-<p align="center">
-  <img src="docs/screenshots/fill-styles.png" alt="Fill styles gallery — hachure, solid, zigzag, cross-hatch, dots" width="700" />
-</p>
-
-### How It Works
-
-1. **`claude-canvas start`** launches a local Express + WebSocket server and opens a browser tab
-2. **Claude Code** sends draw commands and questions via the CLI (which hits the HTTP API)
-3. The **server broadcasts** commands to the browser over WebSocket in real-time
-4. **Users interact** directly on the canvas — drawing, answering questions, or annotating Claude's work
-5. **`claude-canvas screenshot`** captures the canvas state and returns answers to any pending questions
 
 ---
 
@@ -114,7 +119,30 @@ This opens a browser tab with a fresh canvas and returns session info:
 {"sessionId": "a1b2c3d4", "port": 7890, "url": "http://127.0.0.1:7890", "pid": 1234}
 ```
 
-**2. Draw something:**
+**2. Ask a visual question:**
+
+```bash
+claude-canvas ask '{"questions": [
+  {
+    "id": "q1",
+    "text": "Which layout do you prefer?",
+    "type": "single",
+    "options": ["Sidebar", "Top Nav"],
+    "commands": [
+      {"type": "rect", "x": 50, "y": 50, "width": 200, "height": 150, "label": "Sidebar"},
+      {"type": "rect", "x": 300, "y": 50, "width": 200, "height": 150, "label": "Top Nav"}
+    ]
+  }
+]}'
+```
+
+The command blocks. In the browser, answer the question and click Done. The command returns:
+
+```json
+{"ok": true, "status": "answered", "path": "/tmp/claude-canvas/canvas-123.png", "answers": [{"questionId": "q1", "value": "Sidebar"}]}
+```
+
+**3. Or just draw:**
 
 ```bash
 claude-canvas draw '{"commands": [
@@ -122,16 +150,6 @@ claude-canvas draw '{"commands": [
   {"type": "rect", "x": 350, "y": 50, "width": 200, "height": 100, "label": "Backend"},
   {"type": "arrow", "x1": 250, "y1": 100, "x2": 350, "y2": 100, "label": "API"}
 ]}'
-```
-
-**3. Take a screenshot:**
-
-```bash
-claude-canvas screenshot
-```
-
-```json
-{"ok": true, "path": "/tmp/claude-canvas/canvas-123.png", "answers": []}
 ```
 
 **4. Stop the session when done:**
@@ -142,43 +160,128 @@ claude-canvas stop --all
 
 ---
 
-## CLI Reference
+## Visual Q&A / Ask
 
-All commands accept `-s, --session <id>`. You can omit it when only one session is running.
+The core feature of claude-canvas. Claude sends structured questions with visual context — each question gets its own canvas drawing. A floating panel appears in the browser where you answer by clicking options, typing text, or drawing.
 
-### Session Management
+The `ask` command **blocks until you click Done**, then returns all answers and a screenshot in one call. No polling, no extra steps.
 
-| Command | Description |
-|---------|-------------|
-| `claude-canvas start` | Start a new canvas session (opens browser) |
-| `claude-canvas start -p 8080` | Start on a specific port |
-| `claude-canvas stop -s <id>` | Stop a specific session |
-| `claude-canvas stop --all` | Stop all running sessions |
+### The Flow
 
-### Drawing
-
-```bash
-# Send draw commands as JSON
-claude-canvas draw '{"commands": [...]}'
-
-# Read from stdin (useful for large payloads)
-echo '{"commands": [...]}' | claude-canvas draw -
-
-# Render instantly without animation
-claude-canvas draw --no-animate '{"commands": [...]}'
+```
+Claude runs:  claude-canvas ask '{"questions": [...]}'
+                    │
+                    ▼
+         ┌──────────────────┐
+         │  Browser opens   │
+         │  question panel  │
+         │  with drawings   │
+         └────────┬─────────┘
+                  │  User answers questions
+                  │  and clicks Done
+                  ▼
+         Claude receives:
+         { ok: true, status: "answered",
+           path: "screenshot.png",
+           answers: [...] }
 ```
 
-### Canvas Operations
+<p align="center">
+  <img src="docs/screenshots/ui-ask.png" alt="Visual Q&A — Claude draws layout options, user picks one" width="700" />
+</p>
 
-| Command | Description |
-|---------|-------------|
-| `claude-canvas clear` | Clear all objects from the canvas |
-| `claude-canvas clear --layer claude` | Clear only Claude's objects (keep user drawings) |
-| `claude-canvas screenshot` | Capture canvas as PNG and collect Q&A answers |
-| `claude-canvas export -f png` | Export as PNG |
-| `claude-canvas export -f svg` | Export as SVG |
-| `claude-canvas export -f json` | Export as JSON |
-| `claude-canvas export -f png --labels` | Export with shape labels included |
+Users select answers via interactive pill buttons. Selected answers are highlighted:
+
+<p align="center">
+  <img src="docs/screenshots/ui-ask-answered.png" alt="Visual Q&A — answer selected" width="700" />
+</p>
+
+### Sending Questions
+
+```bash
+claude-canvas ask '{"questions": [
+  {
+    "id": "q1",
+    "text": "Which layout do you prefer?",
+    "type": "single",
+    "options": ["Layout A", "Layout B", "Layout C"],
+    "commands": [
+      {"type": "rect", "x": 80, "y": 80, "width": 200, "height": 150, "label": "Layout A"},
+      {"type": "rect", "x": 350, "y": 80, "width": 200, "height": 150, "label": "Layout B"}
+    ]
+  },
+  {
+    "id": "q2",
+    "text": "What should the title be?",
+    "type": "text"
+  }
+]}'
+```
+
+### Question Types
+
+| Type | Description | User interaction | Answer format |
+|------|------------|------------------|---------------|
+| `single` | Pick one option | Radio-style pill buttons | `"value": "Option A"` |
+| `multi` | Pick multiple options | Toggle pill buttons | `"value": ["Option A", "Option C"]` |
+| `text` | Free text input | Text field | `"value": "user's text"` |
+| `canvas` | Draw on canvas | Freeform drawing | `"value": "see canvas"` + snapshot PNG |
+
+### Response
+
+The `ask` command blocks and returns:
+
+```json
+{
+  "ok": true,
+  "status": "answered",
+  "path": "/tmp/claude-canvas/canvas-123.png",
+  "answers": [
+    {"questionId": "q1", "value": "Layout A"},
+    {"questionId": "q2", "value": "My Custom Title"}
+  ]
+}
+```
+
+If the browser disconnects before the user submits:
+
+```json
+{
+  "ok": false,
+  "status": "disconnected",
+  "error": "Browser disconnected before answers were submitted"
+}
+```
+
+### Canvas-Type Answers
+
+For `canvas`-type questions, Claude draws a diagram and the user responds by drawing directly on the canvas. The answer includes a snapshot of what the user drew:
+
+<p align="center">
+  <img src="docs/screenshots/ui-canvas-answer.png" alt="Canvas Q&A — Claude draws a wireframe, user annotates with freehand drawings" width="700" />
+</p>
+
+```json
+{"questionId": "q3", "value": "see canvas", "canvasSnapshot": "/tmp/claude-canvas/canvas-q3-456.png"}
+```
+
+---
+
+## Drawing
+
+Claude can draw shapes, diagrams, and wireframes on the canvas with the `draw` command:
+
+```bash
+claude-canvas draw '{"commands": [
+  {"type": "rect", "x": 50, "y": 50, "width": 200, "height": 100, "label": "Frontend"},
+  {"type": "rect", "x": 350, "y": 50, "width": 200, "height": 100, "label": "Backend"},
+  {"type": "arrow", "x1": 250, "y1": 100, "x2": 350, "y2": 100, "label": "API"}
+]}'
+```
+
+<p align="center">
+  <img src="docs/screenshots/fill-styles.png" alt="Fill styles gallery — hachure, solid, zigzag, cross-hatch, dots" width="700" />
+</p>
 
 <details>
 <summary><strong>DrawCommand Types</strong> (click to expand)</summary>
@@ -238,7 +341,8 @@ For structured flowcharts:
 
 </details>
 
-### Fill Styles
+<details>
+<summary><strong>Fill Styles</strong> (click to expand)</summary>
 
 Shapes default to `"hachure"`. Set `fillStyle` on any shape:
 
@@ -253,83 +357,7 @@ Shapes default to `"hachure"`. Set `fillStyle` on any shape:
 | `zigzag-line` | Zigzag line pattern |
 | `none` | No fill (wireframe outline only) |
 
----
-
-## Visual Q&A
-
-The Q&A system lets Claude send structured questions with visual context. A floating panel appears in the browser where users can answer by clicking options, typing text, or drawing.
-
-<p align="center">
-  <img src="docs/screenshots/ui-ask.png" alt="Visual Q&A — question panel with layout options" width="700" />
-</p>
-
-Users select answers via interactive pill buttons. Selected answers are highlighted:
-
-<p align="center">
-  <img src="docs/screenshots/ui-ask-answered.png" alt="Visual Q&A — answer selected" width="700" />
-</p>
-
-### Sending Questions
-
-```bash
-claude-canvas ask '{"questions": [
-  {
-    "id": "q1",
-    "text": "Which layout do you prefer?",
-    "type": "single",
-    "options": ["Layout A", "Layout B", "Layout C"],
-    "commands": [
-      {"type": "rect", "x": 80, "y": 80, "width": 200, "height": 150, "label": "Layout A"},
-      {"type": "rect", "x": 350, "y": 80, "width": 200, "height": 150, "label": "Layout B"}
-    ]
-  },
-  {
-    "id": "q2",
-    "text": "What should the title be?",
-    "type": "text"
-  }
-]}'
-```
-
-### Question Types
-
-| Type | Description | User interaction | Answer format |
-|------|------------|------------------|---------------|
-| `single` | Pick one option | Radio-style pill buttons | `"value": "Option A"` |
-| `multi` | Pick multiple options | Toggle pill buttons | `"value": ["Option A", "Option C"]` |
-| `text` | Free text input | Text field | `"value": "user's text"` |
-| `canvas` | Draw on canvas | Freeform drawing | `"value": "see canvas"` + snapshot PNG |
-
-### Collecting Answers
-
-After sending questions, call `screenshot` to retrieve answers:
-
-```bash
-claude-canvas screenshot
-```
-
-```json
-{
-  "ok": true,
-  "path": "/tmp/claude-canvas/canvas-123.png",
-  "answers": [
-    {"questionId": "q1", "value": "Layout A"},
-    {"questionId": "q2", "value": "My Custom Title"}
-  ]
-}
-```
-
-For `canvas`-type questions, Claude draws a diagram and the user responds by drawing directly on the canvas. The answer includes a snapshot of what the user drew:
-
-<p align="center">
-  <img src="docs/screenshots/ui-canvas-answer.png" alt="Canvas Q&A — Claude draws a wireframe, user annotates with freehand drawings" width="700" />
-</p>
-
-```json
-{"questionId": "q3", "value": "see canvas", "canvasSnapshot": "/tmp/claude-canvas/canvas-q3-456.png"}
-```
-
----
+</details>
 
 ## Interactive Canvas
 
@@ -396,6 +424,30 @@ Once installed, Claude Code will automatically use the canvas when it makes sens
 - Presenting visual options and asking for your preference via Q&A
 
 You don't need to explicitly tell Claude to use the canvas. The skill teaches Claude when the canvas is the right tool for the job.
+
+---
+
+## CLI Reference
+
+All commands accept `-s, --session <id>`. You can omit it when only one session is running.
+
+| Command | Description |
+|---------|-------------|
+| `claude-canvas start` | Start a new canvas session (opens browser) |
+| `claude-canvas start -p 8080` | Start on a specific port |
+| `claude-canvas stop -s <id>` | Stop a specific session |
+| `claude-canvas stop --all` | Stop all running sessions |
+| `claude-canvas ask '<json>'` | Send visual questions, block until answered |
+| `claude-canvas draw '<json>'` | Send draw commands to the canvas |
+| `claude-canvas draw --no-animate '<json>'` | Draw without animation |
+| `claude-canvas clear` | Clear all objects from the canvas |
+| `claude-canvas clear --layer claude` | Clear only Claude's objects |
+| `claude-canvas screenshot` | Capture canvas as PNG |
+| `claude-canvas export -f png\|svg\|json` | Export canvas in various formats |
+| `claude-canvas setup` | Install/update the Claude Code skill |
+| `claude-canvas update` | Update to the latest version |
+
+Both `ask` and `draw` accept `-` to read JSON from stdin.
 
 ---
 

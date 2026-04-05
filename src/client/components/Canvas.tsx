@@ -23,13 +23,14 @@ interface CanvasViewProps {
   getAllAnswers?: () => Answer[];
   getQuestionsState?: () => QuestionState[];
   onCanvasReady?: (getCanvas: () => import("fabric").Canvas | null) => void;
+  onSubmitAnswersReady?: (fn: () => Promise<void>) => void;
 }
 
 function isUserLayer(obj: FabricObject): boolean {
   return (obj as unknown as { data?: { layer?: string } }).data?.layer === "user";
 }
 
-export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQuestionsState, onCanvasReady }: CanvasViewProps) {
+export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQuestionsState, onCanvasReady, onSubmitAnswersReady }: CanvasViewProps) {
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const narrationRef = useRef<NarrationHandle>(null);
@@ -169,7 +170,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
     };
   }, [getCanvas]);
 
-  const { handleMessage } = useCanvasMessages({
+  const { handleMessage, submitAnswers } = useCanvasMessages({
     renderCommands,
     clear,
     clearLayer,
@@ -188,6 +189,10 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
 
   const { send } = useWebSocket({ onMessage: handleMessage });
   sendRef.current = send;
+
+  useEffect(() => {
+    onSubmitAnswersReady?.(() => submitAnswers());
+  }, [submitAnswers, onSubmitAnswersReady]);
 
   return (
     <>

@@ -246,27 +246,35 @@ Use `canvas` type when you want the user to draw, annotate, or visually modify y
 
 ### Collecting Answers
 
-After asking, call `screenshot` to get answers:
+The `ask` command **blocks until the user clicks Done** and returns answers + screenshot directly:
 
-```bash
-claude-canvas screenshot
-```
-
-Response:
 ```json
 {
   "ok": true,
+  "status": "answered",
   "path": "/tmp/claude-canvas/canvas-123.png",
   "answers": [
     {"questionId": "q1", "value": "Layout A"},
     {"questionId": "q2", "value": ["Fast", "Reliable"]},
     {"questionId": "q3", "value": "Alice"},
-    {"questionId": "q4", "value": "see canvas", "canvasSnapshot": "<base64 png>"}
+    {"questionId": "q4", "value": "see canvas", "canvasSnapshot": "/tmp/claude-canvas/canvas-q4-xxx.png"}
   ]
 }
 ```
 
-The `path` field contains a PNG screenshot of the canvas. For `canvas`-type questions, the `canvasSnapshot` field contains a base64-encoded PNG of what the user drew.
+No separate `screenshot` call needed — `ask` handles everything in one round-trip.
+
+If the browser disconnects before the user submits answers:
+
+```json
+{
+  "ok": false,
+  "status": "disconnected",
+  "error": "Browser disconnected before answers were submitted"
+}
+```
+
+The `path` field contains a PNG screenshot of the canvas. For `canvas`-type questions, the `canvasSnapshot` field contains the path to a PNG of what the user drew.
 
 ### Multi-Question Flow
 

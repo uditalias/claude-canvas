@@ -84,6 +84,44 @@ export function useCanvasMessages(opts: UseCanvasMessagesOpts) {
     });
   };
 
+  const submitAnswers = useCallback(async () => {
+    const canvas = getCanvas();
+    if (!canvas) return;
+
+    const mainImage = takeScreenshot();
+
+    if (!getAllAnswersRef.current || !getQuestionsStateRef.current) {
+      sendRef.current?.({ type: "answers_submitted", payload: { image: mainImage, answers: [] } });
+      return;
+    }
+
+    const answers = getAllAnswersRef.current();
+    const questionsState = getQuestionsStateRef.current();
+    const processedAnswers: Answer[] = [];
+
+    const currentJson = canvas.toJSON();
+
+    for (const a of answers) {
+      const qs = questionsState.find((q) => q.question.id === a.questionId);
+      if (qs && qs.question.type === "canvas") {
+        await canvas.loadFromJSON(qs.canvasJson);
+        canvas.requestRenderAll();
+        const snapshot = takeScreenshot();
+        processedAnswers.push({ ...a, canvasSnapshot: snapshot });
+      } else {
+        processedAnswers.push(a);
+      }
+    }
+
+    await canvas.loadFromJSON(currentJson);
+    canvas.requestRenderAll();
+
+    sendRef.current?.({
+      type: "answers_submitted",
+      payload: { image: mainImage, answers: processedAnswers },
+    });
+  }, [getCanvas, takeScreenshot]);
+
   const handleMessage = useCallback(
     (msg: WsMessage) => {
       if (msg.type === "draw") {
@@ -142,5 +180,5 @@ export function useCanvasMessages(opts: UseCanvasMessagesOpts) {
     [renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, getAllAnswers, getQuestionsState, onAskBatch, exportSVG, exportPNG, exportJSON]
   );
 
-  return { handleMessage };
+  return { handleMessage, submitAnswers };
 }

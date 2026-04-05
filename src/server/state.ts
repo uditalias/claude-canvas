@@ -1,16 +1,21 @@
 import * as WebSocket from "ws";
-import type { Answer } from "../protocol/types.js";
+import type { Answer, AskPayload } from "../protocol/types.js";
 
 interface ServerState {
   clients: Set<WebSocket.WebSocket>;
   pendingScreenshot: ((data: { image: string; answers: Answer[] }) => void) | null;
   pendingExport: ((data: string) => void) | null;
+  pendingAsk: {
+    resolve: (data: { image: string; answers: Answer[] }) => void;
+    reject: (reason: Error) => void;
+  } | null;
 }
 
 const state: ServerState = {
   clients: new Set(),
   pendingScreenshot: null,
   pendingExport: null,
+  pendingAsk: null,
 };
 
 export function addClient(ws: WebSocket.WebSocket): void {
@@ -101,6 +106,46 @@ export function resolveExport(data: string): void {
   if (state.pendingExport) {
     state.pendingExport(data);
   }
+}
+
+export function requestAskWithAnswers(payload: AskPayload): Promise<{ image: string; answers: Answer[] }> {
+  return new Promise((resolve, reject) => {
+    const clients = [...state.clients].filter(
+      (c) => c.readyState === WebSocket.WebSocket.OPEN
+    );
+    if (clients.length === 0) {
+      return reject(new Error("No browser clients connected"));
+    }
+
+    state.pendingAsk = {
+      resolve: (data: { image: string; answers: Answer[] }) => {
+        state.pendingAsk = null;
+        resolve(data);
+      },
+      reject: (reason: Error) => {
+        state.pendingAsk = null;
+        reject(reason);
+      },
+    };
+
+    broadcast(JSON.stringify({ type: "ask", payload }));
+  });
+}
+
+export function resolveAskAnswers(data: { image: string; answers: Answer[] }): void {
+  if (state.pendingAsk) {
+    state.pendingAsk.resolve(data);
+  }
+}
+
+export function rejectAskAnswers(reason: string): void {
+  if (state.pendingAsk) {
+    state.pendingAsk.reject(new Error(reason));
+  }
+}
+
+export function hasPendingAsk(): boolean {
+  return state.pendingAsk !== null;
 }
 
 export function getClientCount(): number {

@@ -6,6 +6,7 @@ import {
   getClientCount,
   requestScreenshot,
   requestExport,
+  requestAskWithAnswers,
 } from "../../src/server/state.js";
 
 describe("WebSocket Server", () => {
@@ -173,6 +174,84 @@ describe("WebSocket Server", () => {
     await new Promise((r) => setTimeout(r, 50));
     // Server should still be functional - client count unchanged
     expect(getClientCount()).toBeGreaterThanOrEqual(1);
+  });
+
+  it("resolves answers_submitted message", async () => {
+    const ws = await connectClient();
+
+    const askPayload = {
+      questions: [
+        {
+          id: "q1",
+          text: "Which layout?",
+          type: "single" as const,
+          options: ["A", "B"],
+          commands: [],
+        },
+      ],
+    };
+
+    const askPromise = requestAskWithAnswers(askPayload);
+
+    // Wait for the ask message, then send answers back
+    await new Promise<void>((resolve) => {
+      ws.on("message", (data) => {
+        const msg = JSON.parse(data.toString());
+        if (msg.type === "ask") {
+          ws.send(
+            JSON.stringify({
+              type: "answers_submitted",
+              payload: {
+                image: "data:image/png;base64,ANSWERS",
+                answers: [{ questionId: "q1", value: "A" }],
+              },
+            })
+          );
+          resolve();
+        }
+      });
+    });
+
+    const result = await askPromise;
+    expect(result.image).toBe("data:image/png;base64,ANSWERS");
+    expect(result.answers).toEqual([{ questionId: "q1", value: "A" }]);
+  });
+
+  it("rejects pending ask when client disconnects", async () => {
+    const ws = await connectClient();
+
+    const askPayload = {
+      questions: [
+        {
+          id: "q1",
+          text: "Which layout?",
+          type: "single" as const,
+          options: ["A", "B"],
+          commands: [],
+        },
+      ],
+    };
+
+    const askPromise = requestAskWithAnswers(askPayload);
+
+    // Wait for the ask message, then disconnect
+    await new Promise<void>((resolve) => {
+      ws.on("message", (data) => {
+        const msg = JSON.parse(data.toString());
+        if (msg.type === "ask") {
+          resolve();
+        }
+      });
+    });
+
+    // Close the client
+    ws.close();
+    // Remove from tracked clients since we manually closed
+    openClients.splice(openClients.indexOf(ws), 1);
+
+    await expect(askPromise).rejects.toThrow(
+      "Browser disconnected before answers were submitted"
+    );
   });
 
   it("silently ignores unknown message types", async () => {
