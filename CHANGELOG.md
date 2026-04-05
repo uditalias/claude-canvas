@@ -1,3 +1,8 @@
+## 1.0.13 (2026-04-05)
+
+- Update package-lock.json to version 1.0.12 and add engine requirements (39a0432)
+- Enhance SKILL.md with mandatory status updates for canvas commands (048af50)
+
 ## 1.0.12 (2026-04-05)
 
 - Refactor canvas command structure and add utility functions (6902aaf)
