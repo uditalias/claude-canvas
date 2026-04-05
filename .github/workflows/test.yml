@@ -7,7 +7,23 @@ on:
     branches: [main]
 
 jobs:
+  check-skip:
+    name: Check Skip
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.check.outputs.should_skip }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ github.event.head_commit.message }}" == release:\ v* ]]; then
+            echo "should_skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   unit-tests:
+    needs: check-skip
+    if: needs.check-skip.outputs.should_skip != 'true'
     name: Unit Tests
     runs-on: ubuntu-latest
     steps:
@@ -20,6 +36,8 @@ jobs:
       - run: npm test
 
   e2e-tests:
+    needs: check-skip
+    if: needs.check-skip.outputs.should_skip != 'true'
     name: E2E Tests
     runs-on: ubuntu-latest
     steps:
