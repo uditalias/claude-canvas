@@ -29,6 +29,8 @@
   },
   "files": [
     "dist/",
+    "src/skill/claude-canvas/",
+    "scripts/postinstall.js",
     "LICENSE"
   ],
   "scripts": {
@@ -37,6 +39,7 @@
     "build:server": "node scripts/build-server.js",
     "dev": "tsx src/bin/claude-canvas.ts",
     "dev:client": "vite --config vite.config.ts",
+    "postinstall": "node scripts/postinstall.js",
     "prepublishOnly": "npm test && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",

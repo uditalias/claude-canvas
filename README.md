@@ -365,13 +365,13 @@ Install the included skill so Claude Code automatically knows when and how to us
 ### Installation
 
 ```bash
-cp src/skill/claude-canvas.md ~/.claude/skills/
+cp -r src/skill/claude-canvas ~/.claude/skills/
 ```
 
 Or if installed globally via npm:
 
 ```bash
-cp $(npm root -g)/claude-canvas/dist/skill/claude-canvas.md ~/.claude/skills/
+cp -r $(npm root -g)/claude-canvas/src/skill/claude-canvas ~/.claude/skills/
 ```
 
 ### What the Skill Does

@@ -170,8 +170,8 @@ Shape labels: stored on `data.label`. Rendered as floating DOM elements above th
 
 ## Skill Installation
 
-Copy `src/skill/claude-canvas.md` to your Claude skills directory to enable Claude to use the canvas tool:
+Copy the skill folder to your Claude skills directory to enable Claude to use the canvas tool:
 
 ```bash
-cp src/skill/claude-canvas.md ~/.claude/skills/
+cp -r src/skill/claude-canvas ~/.claude/skills/
 ```
