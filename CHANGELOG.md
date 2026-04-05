@@ -1,3 +1,7 @@
+## 1.0.5 (2026-04-05)
+
+- Refactor skill source directory resolution in claude-canvas (497f4b8)
+
 ## 1.0.4 (2026-04-05)
 
 - Update package.json and release workflow for improved configuration (1cf530c)
