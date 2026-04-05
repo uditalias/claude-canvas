@@ -319,22 +319,55 @@ claude-canvas export --session a1b2c3d4 -f json           # Export as JSON
 claude-canvas export --session a1b2c3d4 -f png --labels   # Export with shape labels included
 ```
 
-## Status Updates
+## Status Updates (MANDATORY)
 
-Send status messages to the canvas badge so the user knows what's happening:
+**IMPORTANT: Always send status updates so the user sees activity on the canvas while you work.** Generating draw/ask commands takes time — without status updates, the user stares at a blank canvas wondering if anything is happening.
+
+The status text appears in the top badge next to the green connection dot.
 
 ```bash
-claude-canvas status 'Drawing architecture diagram...'
-claude-canvas status 'Waiting for your answers...'
-claude-canvas status 'Processing responses...'
-claude-canvas status ''    # Clear — resets to "Connected"
+claude-canvas status 'Designing diagram layout...'   # Send immediately
+# ... then generate and send your draw/ask command
 ```
 
-The status text appears in the top badge next to the green connection dot. Use it at key moments:
-- Before drawing: `claude-canvas status 'Drawing diagram...'`
-- Before asking: `claude-canvas status 'Waiting for your answers...'`
-- After collecting answers: `claude-canvas status 'Processing your feedback...'`
-- When done: clear the status or stop the session
+### Required status flow for drawing
+
+Send the status command **as your first tool call**, before generating the draw payload:
+
+```bash
+# Step 1: Status update (executes immediately — user sees it on canvas)
+claude-canvas status 'Drawing architecture diagram...'
+
+# Step 2: Draw command (takes time to generate — user sees status while waiting)
+claude-canvas draw '{"commands": [...]}'
+
+# Step 3: Clear status when done
+claude-canvas status ''
+```
+
+### Required status flow for Q&A
+
+For `ask` commands, send a status update first so the user knows questions are being prepared:
+
+```bash
+# Step 1: Status update (executes immediately)
+claude-canvas status 'Preparing questions...'
+
+# Step 2: Ask command (takes time to generate — user sees status while waiting)
+claude-canvas ask '{"questions": [...]}'
+```
+
+The `ask` command blocks until the user submits answers, so no need to clear status — the question panel provides its own feedback.
+
+### Status message examples
+
+Use descriptive, context-aware messages:
+- `'Designing layout options...'` — before drawing layout comparisons
+- `'Sketching architecture diagram...'` — before drawing system diagrams
+- `'Preparing wireframe...'` — before drawing UI wireframes
+- `'Setting up questions...'` — before ask commands
+- `'Processing your feedback...'` — after collecting answers
+- `''` — clear status (resets to "Connected")
 
 ## Session Lifecycle
 
