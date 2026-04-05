@@ -156,11 +156,9 @@ export function useDrawingTools({
     const canInteract = isPointer || isPaint;
     const paintCursor = isPaint ? makePaintCursor(resolvedTheme === "dark" ? "white" : "black") : undefined;
     canvas.forEachObject((obj) => {
-      if (isUserLayer(obj)) {
-        obj.selectable = canInteract;
-        obj.evented = canInteract;
-        obj.hoverCursor = paintCursor ?? null;
-      }
+      obj.selectable = canInteract;
+      obj.evented = canInteract;
+      obj.hoverCursor = paintCursor ?? null;
     });
 
     // When text editing ends (blur, Escape, click outside), switch to pointer

@@ -3,13 +3,13 @@ import { Canvas, FabricObject, util } from "fabric";
 
 const MAX_HISTORY = 50;
 
-function isUserLayer(obj: FabricObject): boolean {
-  return (obj as any).data?.layer === "user";
+function hasLayer(obj: FabricObject): boolean {
+  return !!(obj as any).data?.layer;
 }
 
-function serializeUserObjects(canvas: Canvas): string {
-  const userObjs = canvas.getObjects().filter(isUserLayer);
-  const data = userObjs.map((obj) => obj.toObject(["data", "originX", "originY"]));
+function serializeObjects(canvas: Canvas): string {
+  const objs = canvas.getObjects().filter(hasLayer);
+  const data = objs.map((obj) => obj.toObject(["data", "originX", "originY"]));
   return JSON.stringify(data);
 }
 
@@ -28,7 +28,7 @@ export function useUndoRedo({ getCanvas }: UseUndoRedoOptions) {
     const canvas = getCanvas();
     if (!canvas) return;
 
-    const snapshot = serializeUserObjects(canvas);
+    const snapshot = serializeObjects(canvas);
 
     // If we're not at the end of history, truncate forward history
     if (indexRef.current < historyRef.current.length - 1) {
@@ -52,9 +52,9 @@ export function useUndoRedo({ getCanvas }: UseUndoRedoOptions) {
 
       restoringRef.current = true;
 
-      // Remove all user objects
-      const userObjs = canvas.getObjects().filter(isUserLayer);
-      for (const obj of userObjs) {
+      // Remove all layered objects (keep ephemeral things like guides)
+      const layeredObjs = canvas.getObjects().filter(hasLayer);
+      for (const obj of layeredObjs) {
         canvas.remove(obj);
       }
 
@@ -101,8 +101,8 @@ export function useUndoRedo({ getCanvas }: UseUndoRedoOptions) {
     }
 
     const onAddedOrRemoved = (opt: { target: FabricObject }) => {
-      // Skip non-user objects (e.g. snap guide lines added/removed during moves)
-      if (!isUserLayer(opt.target)) return;
+      // Skip ephemeral objects without a layer (e.g. snap guide lines)
+      if (!(opt.target as any).data?.layer) return;
       saveSnapshot();
     };
 

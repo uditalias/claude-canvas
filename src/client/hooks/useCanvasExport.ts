@@ -43,7 +43,29 @@ export function useCanvasExport(fabricRef: React.RefObject<Canvas | null>) {
     if (!canvas) return "";
     const tempLabels = includeLabels ? addTempLabels(canvas) : [];
     canvas.requestRenderAll();
-    const dataUrl = canvas.toDataURL({ format: "png", multiplier: 1 });
+    const objects = canvas.getObjects();
+    let dataUrl: string;
+    if (objects.length === 0) {
+      dataUrl = canvas.toDataURL({ format: "png", multiplier: 1 });
+    } else {
+      const padding = 40;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const obj of objects) {
+        const br = obj.getBoundingRect();
+        minX = Math.min(minX, br.left);
+        minY = Math.min(minY, br.top);
+        maxX = Math.max(maxX, br.left + br.width);
+        maxY = Math.max(maxY, br.top + br.height);
+      }
+      dataUrl = canvas.toDataURL({
+        format: "png",
+        multiplier: 1,
+        left: minX - padding,
+        top: minY - padding,
+        width: maxX - minX + padding * 2,
+        height: maxY - minY + padding * 2,
+      });
+    }
     for (const t of tempLabels) canvas.remove(t);
     return dataUrl;
   }, []);

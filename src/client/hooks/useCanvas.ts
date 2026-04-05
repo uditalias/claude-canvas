@@ -270,9 +270,29 @@ export function useCanvas(
   const takeScreenshot = useCallback((): string => {
     const canvas = fabricRef.current;
     if (!canvas) return "";
-    // The after:render handler draws the background, so just export directly
-    const dataUrl = canvas.toDataURL({ format: "png", multiplier: 1 });
-    return dataUrl;
+    const objects = canvas.getObjects();
+    if (objects.length === 0) {
+      return canvas.toDataURL({ format: "png", multiplier: 1 });
+    }
+    // Compute bounding box around all objects in screen space
+    // getBoundingRect() returns coordinates already in the canvas pixel space
+    const padding = 40;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const obj of objects) {
+      const br = obj.getBoundingRect();
+      minX = Math.min(minX, br.left);
+      minY = Math.min(minY, br.top);
+      maxX = Math.max(maxX, br.left + br.width);
+      maxY = Math.max(maxY, br.top + br.height);
+    }
+    return canvas.toDataURL({
+      format: "png",
+      multiplier: 1,
+      left: minX - padding,
+      top: minY - padding,
+      width: maxX - minX + padding * 2,
+      height: maxY - minY + padding * 2,
+    });
   }, []);
 
   const { exportSVG, exportPNG, exportJSON } = useCanvasExport(fabricRef);
