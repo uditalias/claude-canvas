@@ -228,7 +228,10 @@ program
       const skillDestDir = join(homedir(), ".claude", "skills", "claude-canvas");
       const skillDest = join(skillDestDir, "SKILL.md");
       if (existsSync(skillDest)) {
-        const skillSourceDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../src/skill/claude-canvas");
+        const updateBaseDir = typeof __dirname !== "undefined"
+          ? __dirname
+          : dirname(fileURLToPath(import.meta.url));
+        const skillSourceDir = resolve(updateBaseDir, "../../src/skill/claude-canvas");
         const skillSource = join(skillSourceDir, "SKILL.md");
         if (existsSync(skillSource)) {
           const installed = readFileSync(skillDest, "utf-8");
@@ -250,7 +253,10 @@ program
   .command("setup")
   .description("Install or update the Claude Code skill for canvas")
   .action(async () => {
-    const skillSourceDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../src/skill/claude-canvas");
+    const baseDir = typeof __dirname !== "undefined"
+      ? __dirname
+      : dirname(fileURLToPath(import.meta.url));
+    const skillSourceDir = resolve(baseDir, "../../src/skill/claude-canvas");
     const skillSource = join(skillSourceDir, "SKILL.md");
     const skillDestDir = join(homedir(), ".claude", "skills", "claude-canvas");
     const skillDest = join(skillDestDir, "SKILL.md");
