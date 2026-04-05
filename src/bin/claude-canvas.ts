@@ -18,17 +18,25 @@ import { readFileSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { createInterface } from "node:readline";
-import { fileURLToPath } from "node:url";
 
 declare const PACKAGE_VERSION: string;
+
+// Resolve the directory of this file in both CJS (esbuild bundle) and ESM (tsx dev) contexts.
+// The indirect eval prevents esbuild from statically analyzing import.meta in CJS output.
+function getCurrentDir(): string {
+  if (typeof __dirname !== "undefined") return __dirname;
+  // ESM fallback for dev/test (tsx)
+  const { fileURLToPath } = require("node:url");
+  const meta = (0, eval)("import.meta");
+  return dirname(fileURLToPath(meta.url));
+}
 
 // PACKAGE_VERSION is injected by esbuild at build time.
 // Falls back to reading package.json for dev/test (tsx).
 function getVersion(): string {
   if (typeof PACKAGE_VERSION !== "undefined") return PACKAGE_VERSION;
   try {
-    const dir = dirname(fileURLToPath(import.meta.url));
-    const pkg = JSON.parse(readFileSync(resolve(dir, "../../package.json"), "utf-8"));
+    const pkg = JSON.parse(readFileSync(resolve(getCurrentDir(), "../../package.json"), "utf-8"));
     return pkg.version;
   } catch {
     return "0.0.0-dev";
@@ -228,9 +236,7 @@ program
       const skillDestDir = join(homedir(), ".claude", "skills", "claude-canvas");
       const skillDest = join(skillDestDir, "SKILL.md");
       if (existsSync(skillDest)) {
-        const updateBaseDir = typeof __dirname !== "undefined"
-          ? __dirname
-          : dirname(fileURLToPath(import.meta.url));
+        const updateBaseDir = getCurrentDir();
         const skillSourceDir = resolve(updateBaseDir, "../../src/skill/claude-canvas");
         const skillSource = join(skillSourceDir, "SKILL.md");
         if (existsSync(skillSource)) {
@@ -253,9 +259,7 @@ program
   .command("setup")
   .description("Install or update the Claude Code skill for canvas")
   .action(async () => {
-    const baseDir = typeof __dirname !== "undefined"
-      ? __dirname
-      : dirname(fileURLToPath(import.meta.url));
+    const baseDir = getCurrentDir();
     const skillSourceDir = resolve(baseDir, "../../src/skill/claude-canvas");
     const skillSource = join(skillSourceDir, "SKILL.md");
     const skillDestDir = join(homedir(), ".claude", "skills", "claude-canvas");
