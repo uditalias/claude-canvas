@@ -4,6 +4,7 @@ const { execSync } = require("child_process");
 const { readFileSync, writeFileSync, existsSync } = require("fs");
 const { resolve } = require("path");
 const readline = require("readline");
+const { tmpdir } = require("os");
 
 const root = resolve(__dirname, "..");
 const pkgPath = resolve(root, "package.json");
