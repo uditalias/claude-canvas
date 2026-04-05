@@ -1,3 +1,8 @@
+## 1.0.9 (2026-04-05)
+
+- Add 'status' command for canvas updates (3a3c68d)
+- Add check-skip job to GitHub Actions workflow (5b72697)
+
 ## 1.0.8 (2026-04-05)
 
 - Refactor font usage across the application (bfa6a5b)
