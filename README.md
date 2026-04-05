@@ -59,7 +59,7 @@ It also serves as a **visual Q&A tool** — Claude can send structured questions
 2. **Claude Code** sends draw commands and questions via the CLI (which hits the HTTP API)
 3. The **server broadcasts** commands to the browser over WebSocket in real-time
 4. **Users interact** directly on the canvas — drawing, answering questions, or annotating Claude's work
-5. **`claude-canvas screenshot`** captures the canvas state and returns answers to any pending questions
+5. **`claude-canvas ask`** blocks until the user answers and returns both answers and a screenshot in one call
 
 ---
 
@@ -302,20 +302,27 @@ claude-canvas ask '{"questions": [
 
 ### Collecting Answers
 
-After sending questions, call `screenshot` to retrieve answers:
-
-```bash
-claude-canvas screenshot
-```
+The `ask` command **blocks until the user clicks Done**, then returns answers and a screenshot in one call:
 
 ```json
 {
   "ok": true,
+  "status": "answered",
   "path": "/tmp/claude-canvas/canvas-123.png",
   "answers": [
     {"questionId": "q1", "value": "Layout A"},
     {"questionId": "q2", "value": "My Custom Title"}
   ]
+}
+```
+
+If the browser disconnects before the user submits:
+
+```json
+{
+  "ok": false,
+  "status": "disconnected",
+  "error": "Browser disconnected before answers were submitted"
 }
 ```
 
