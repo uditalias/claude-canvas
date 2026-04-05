@@ -6,7 +6,7 @@
   "author": "Udi Talias",
   "repository": {
     "type": "git",
-    "url": "https://github.com/uditalias/claude-canvas.git"
+    "url": "git+https://github.com/uditalias/claude-canvas.git"
   },
   "homepage": "https://github.com/uditalias/claude-canvas#readme",
   "bugs": {
@@ -25,7 +25,7 @@
     "node": ">=18"
   },
   "bin": {
-    "claude-canvas": "./dist/bin/claude-canvas.js"
+    "claude-canvas": "dist/bin/claude-canvas.js"
   },
   "files": [
     "dist/",
