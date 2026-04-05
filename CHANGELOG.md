@@ -1,3 +1,7 @@
+## 1.0.10 (2026-04-05)
+
+- Add logo to submission confirmation in App component (edb7bcc)
+
 ## 1.0.9 (2026-04-05)
 
 - Add 'status' command for canvas updates (3a3c68d)
