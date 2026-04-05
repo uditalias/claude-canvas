@@ -9,6 +9,7 @@ import { useToolState, TOOL_SHORTCUTS } from "./hooks/useToolState";
 import { useTheme } from "./hooks/useTheme";
 import { useQuestionPanel } from "./hooks/useQuestionPanel";
 import type { ToolType } from "./hooks/useToolState";
+import LogoSvg from "./assets/logo.svg?raw";
 
 export function App() {
   const toolState = useToolState();
@@ -83,6 +84,7 @@ export function App() {
       {questionPanel.isDone && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="text-center">
+            <div className="mb-4 flex justify-center [&_svg]:w-16 [&_svg]:h-16" dangerouslySetInnerHTML={{ __html: LogoSvg }} />
             <p className="text-lg font-medium">Answers submitted</p>
             <p className="text-sm text-muted-foreground mt-1">You can close this tab</p>
             <button
