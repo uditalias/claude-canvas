@@ -3,7 +3,6 @@
 const { execSync } = require("child_process");
 const { readFileSync, writeFileSync, existsSync } = require("fs");
 const { resolve } = require("path");
-const { tmpdir } = require("os");
 const readline = require("readline");
 
 const root = resolve(__dirname, "..");
@@ -33,21 +32,7 @@ function writePkg(pkg) {
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
 }
 
-// ── version helpers ─────────────────────────────────────────────────────────
-
-const BUMP_TYPES = ["patch", "minor", "major"];
 const SEMVER_RE = /^\d+\.\d+\.\d+$/;
-
-function resolveVersion(arg, current) {
-  if (SEMVER_RE.test(arg)) return arg;
-  if (!BUMP_TYPES.includes(arg)) die(`Invalid version: "${arg}". Use patch, minor, major, or x.y.z`);
-
-  const parts = current.split(".").map(Number);
-  const idx = BUMP_TYPES.indexOf(arg);
-  parts[idx]++;
-  for (let i = idx + 1; i < 3; i++) parts[i] = 0;
-  return parts.join(".");
-}
 
 // ── changelog ───────────────────────────────────────────────────────────────
 
