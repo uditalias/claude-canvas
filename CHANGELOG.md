@@ -1,3 +1,7 @@
+## 1.0.7 (2026-04-05)
+
+- Implement 'list' command for canvas sessions (5c5049c)
+
 ## 1.0.6 (2026-04-05)
 
 - Update architecture flow diagram with new image for improved clarity (34fcb05)
