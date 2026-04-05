@@ -1,3 +1,7 @@
+## 1.0.8 (2026-04-05)
+
+- Refactor font usage across the application (bfa6a5b)
+
 ## 1.0.7 (2026-04-05)
 
 - Implement 'list' command for canvas sessions (5c5049c)

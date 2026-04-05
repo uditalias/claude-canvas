@@ -1,6 +1,6 @@
 {
   "name": "claude-canvas",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "A shared visual canvas for Claude Code",
   "license": "MIT",
   "author": "Udi Talias",
