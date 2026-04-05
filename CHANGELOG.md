@@ -1,3 +1,10 @@
+## 1.0.6 (2026-04-05)
+
+- Update architecture flow diagram with new image for improved clarity (34fcb05)
+- Update architecture and QA flow diagrams with new images for enhanced clarity (a96be5e)
+- Update README to enhance visual flow diagrams for Q&A and architecture (7558467)
+- Feat/blocking ask (#1) (869cda9)
+
 ## 1.0.5 (2026-04-05)
 
 - Refactor skill source directory resolution in claude-canvas (497f4b8)
