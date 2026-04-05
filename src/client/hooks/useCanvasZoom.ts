@@ -1,5 +1,21 @@
 import { useCallback } from "react";
-import { Canvas, Point } from "fabric";
+import { Canvas, FabricObject, Point } from "fabric";
+
+function getContentBounds(objects: FabricObject[]): { cx: number; cy: number; width: number; height: number } | null {
+  if (objects.length === 0) return null;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const obj of objects) {
+    const br = obj.getBoundingRect();
+    minX = Math.min(minX, br.left);
+    minY = Math.min(minY, br.top);
+    maxX = Math.max(maxX, br.left + br.width);
+    maxY = Math.max(maxY, br.top + br.height);
+  }
+  const width = maxX - minX;
+  const height = maxY - minY;
+  if (width === 0 || height === 0) return null;
+  return { cx: (minX + maxX) / 2, cy: (minY + maxY) / 2, width, height };
+}
 
 export function useCanvasZoom(fabricRef: React.RefObject<Canvas | null>) {
   const zoomIn = useCallback(() => {
@@ -32,40 +48,39 @@ export function useCanvasZoom(fabricRef: React.RefObject<Canvas | null>) {
   const fitToScreen = useCallback(() => {
     const canvas = fabricRef.current;
     if (!canvas) return;
-    const objects = canvas.getObjects();
-    if (objects.length === 0) {
+    const bounds = getContentBounds(canvas.getObjects());
+    if (!bounds) {
       canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
       canvas.requestRenderAll();
       return;
     }
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const obj of objects) {
-      const br = obj.getBoundingRect();
-      minX = Math.min(minX, br.left);
-      minY = Math.min(minY, br.top);
-      maxX = Math.max(maxX, br.left + br.width);
-      maxY = Math.max(maxY, br.top + br.height);
-    }
-    const contentW = maxX - minX;
-    const contentH = maxY - minY;
-    if (contentW === 0 || contentH === 0) return;
     const padding = 60;
     const vw = canvas.getWidth() - padding * 2;
     const vh = canvas.getHeight() - padding * 2;
-    const zoom = Math.min(vw / contentW, vh / contentH, 3);
+    const zoom = Math.min(vw / bounds.width, vh / bounds.height, 3);
     canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
     canvas.zoomToPoint(new Point(canvas.getWidth() / 2, canvas.getHeight() / 2), zoom);
     const vpt = canvas.viewportTransform!;
-    vpt[4] = canvas.getWidth() / 2 - cx * zoom;
-    vpt[5] = canvas.getHeight() / 2 - cy * zoom;
+    vpt[4] = canvas.getWidth() / 2 - bounds.cx * zoom;
+    vpt[5] = canvas.getHeight() / 2 - bounds.cy * zoom;
     canvas.requestRenderAll();
+  }, []);
+
+  const centerContent = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const bounds = getContentBounds(canvas.getObjects());
+    if (!bounds) return;
+    const zoom = canvas.getZoom();
+    const vpt = canvas.viewportTransform!;
+    vpt[4] = canvas.getWidth() / 2 - bounds.cx * zoom;
+    vpt[5] = canvas.getHeight() / 2 - bounds.cy * zoom;
+    canvas.setViewportTransform(vpt);
   }, []);
 
   const getZoom = useCallback((): number => {
     return fabricRef.current?.getZoom() ?? 1;
   }, []);
 
-  return { zoomIn, zoomOut, resetZoom, fitToScreen, getZoom };
+  return { zoomIn, zoomOut, resetZoom, fitToScreen, centerContent, getZoom };
 }

@@ -17,9 +17,11 @@ export function App() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const getCanvasRef = useRef<() => Canvas | null>(() => null);
   const submitAnswersRef = useRef<(() => Promise<void>) | null>(null);
+  const centerContentRef = useRef<() => void>(() => {});
 
   const questionPanel = useQuestionPanel({
     getCanvas: () => getCanvasRef.current(),
+    centerContent: () => centerContentRef.current(),
   });
 
   // Keyboard shortcuts for tool switching
@@ -57,6 +59,7 @@ export function App() {
             getQuestionsState={questionPanel.getQuestionsState}
             onCanvasReady={(gc) => { getCanvasRef.current = gc; }}
             onSubmitAnswersReady={(fn) => { submitAnswersRef.current = fn; }}
+            onCenterContentReady={(fn) => { centerContentRef.current = fn; }}
           />
           {questionPanel.isOpen && questionPanel.current && (
             <QuestionPanel

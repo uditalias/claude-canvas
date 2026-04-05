@@ -10,9 +10,10 @@ export interface QuestionState {
 
 interface UseQuestionPanelOptions {
   getCanvas: () => Canvas | null;
+  centerContent?: () => void;
 }
 
-export function useQuestionPanel({ getCanvas }: UseQuestionPanelOptions) {
+export function useQuestionPanel({ getCanvas, centerContent }: UseQuestionPanelOptions) {
   const [questions, setQuestions] = useState<QuestionState[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [closed, setClosed] = useState(false);
@@ -61,6 +62,7 @@ export function useQuestionPanel({ getCanvas }: UseQuestionPanelOptions) {
       saveCurrent();
       const target = questionsRef.current[index];
       canvas.loadFromJSON(target.canvasJson).then(() => {
+        centerContent?.();
         canvas.requestRenderAll();
       });
       setCurrentIndex(index);

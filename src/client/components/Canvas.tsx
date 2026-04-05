@@ -24,13 +24,14 @@ interface CanvasViewProps {
   getQuestionsState?: () => QuestionState[];
   onCanvasReady?: (getCanvas: () => import("fabric").Canvas | null) => void;
   onSubmitAnswersReady?: (fn: () => Promise<void>) => void;
+  onCenterContentReady?: (fn: () => void) => void;
 }
 
 function isUserLayer(obj: FabricObject): boolean {
   return (obj as unknown as { data?: { layer?: string } }).data?.layer === "user";
 }
 
-export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQuestionsState, onCanvasReady, onSubmitAnswersReady }: CanvasViewProps) {
+export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQuestionsState, onCanvasReady, onSubmitAnswersReady, onCenterContentReady }: CanvasViewProps) {
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const narrationRef = useRef<NarrationHandle>(null);
@@ -39,7 +40,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
   activeToolRef.current = toolState.activeTool;
 
   const themeColors = THEME[theme.resolved];
-  const { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onLabelsUpdate, exportSVG, exportPNG, exportJSON } =
+  const { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, centerContent, getZoom, onLabelsUpdate, exportSVG, exportPNG, exportJSON } =
     useCanvas(canvasElRef, containerRef, activeToolRef, themeColors);
 
   // ── Shape labels (rendered as DOM, positioned from after:render) ────────
@@ -48,10 +49,14 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
     onLabelsUpdate(setShapeLabels);
   }, [onLabelsUpdate]);
 
-  // Expose getCanvas to parent
+  // Expose getCanvas and centerContent to parent
   useEffect(() => {
     onCanvasReady?.(getCanvas);
   }, [getCanvas, onCanvasReady]);
+
+  useEffect(() => {
+    onCenterContentReady?.(centerContent);
+  }, [centerContent, onCenterContentReady]);
 
   const { undo, redo, saveSnapshot, pauseHistory, resumeHistory } = useUndoRedo({ getCanvas });
   useSnapGuides({ getCanvas });
@@ -183,6 +188,7 @@ export function CanvasView({ toolState, theme, onAskBatch, getAllAnswers, getQue
     onAskBatch,
     getAllAnswers,
     getQuestionsState,
+    centerContent,
     narrationRef,
     sendRef,
   });

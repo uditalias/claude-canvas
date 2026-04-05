@@ -17,6 +17,7 @@ interface UseCanvasMessagesOpts {
   onAskBatch?: (batch: { question: Question; canvasJson: object }[]) => void;
   getAllAnswers?: () => Answer[];
   getQuestionsState?: () => QuestionState[];
+  centerContent?: () => void;
   narrationRef: React.RefObject<NarrationHandle | null>;
   sendRef: React.RefObject<((msg: object) => void) | undefined>;
 }
@@ -35,6 +36,7 @@ export function useCanvasMessages(opts: UseCanvasMessagesOpts) {
     onAskBatch,
     getAllAnswers,
     getQuestionsState,
+    centerContent,
     narrationRef,
     sendRef,
   } = opts;
@@ -149,7 +151,10 @@ export function useCanvasMessages(opts: UseCanvasMessagesOpts) {
           }
           // Restore Q1's canvas
           if (batch.length > 0) {
-            canvas.loadFromJSON(batch[0].canvasJson).then(() => canvas.requestRenderAll());
+            canvas.loadFromJSON(batch[0].canvasJson).then(() => {
+              centerContent?.();
+              canvas.requestRenderAll();
+            });
           }
           onAskBatch(batch);
         }

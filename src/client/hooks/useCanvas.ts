@@ -309,13 +309,13 @@ export function useCanvas(
     canvas.renderAll();
   }, []);
 
-  const { zoomIn, zoomOut, resetZoom, fitToScreen, getZoom } = useCanvasZoom(fabricRef);
+  const { zoomIn, zoomOut, resetZoom, fitToScreen, centerContent, getZoom } = useCanvasZoom(fabricRef);
 
   const onLabelsUpdate = useCallback((cb: (labels: { text: string; x: number; y: number }[]) => void) => {
     labelsCallbackRef.current = cb;
   }, []);
 
-  return { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, getZoom, onLabelsUpdate, exportSVG, exportPNG, exportJSON };
+  return { renderCommands, clear, clearLayer, takeScreenshot, autopan, getCanvas, spaceDownRef, zoomIn, zoomOut, resetZoom, fitToScreen, centerContent, getZoom, onLabelsUpdate, exportSVG, exportPNG, exportJSON };
 }
 
 
