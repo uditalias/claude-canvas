@@ -10,6 +10,10 @@ import {
   resolveScreenshot,
   requestExport,
   resolveExport,
+  requestAskWithAnswers,
+  resolveAskAnswers,
+  rejectAskAnswers,
+  hasPendingAsk,
 } from "../../src/server/state.js";
 // WebSocket readyState constants (matches the ws module)
 const WS_OPEN = 1;
@@ -247,6 +251,80 @@ describe("state", () => {
     it("resolveExport is a no-op when no pending request", () => {
       // Should not throw
       resolveExport("data");
+    });
+  });
+
+  describe("requestAskWithAnswers", () => {
+    it("rejects when no clients connected", async () => {
+      const payload = { questions: [{ id: "q1", text: "Pick one", type: "single" as const, options: ["A", "B"] }] };
+      await expect(requestAskWithAnswers(payload)).rejects.toThrow("No browser clients connected");
+    });
+
+    it("rejects when all clients are closed", async () => {
+      const ws = trackClient(false);
+      addClient(ws);
+
+      const payload = { questions: [{ id: "q1", text: "Pick one", type: "single" as const, options: ["A", "B"] }] };
+      await expect(requestAskWithAnswers(payload)).rejects.toThrow("No browser clients connected");
+    });
+
+    it("broadcasts ask payload and returns a promise", () => {
+      const ws1 = trackClient(true);
+      const ws2 = trackClient(true);
+      addClient(ws1);
+      addClient(ws2);
+
+      const payload = { questions: [{ id: "q1", text: "Pick one", type: "single" as const, options: ["A", "B"] }] };
+      const promise = requestAskWithAnswers(payload);
+
+      expect(hasPendingAsk()).toBe(true);
+
+      const sent1 = JSON.parse(ws1.messages[0]);
+      const sent2 = JSON.parse(ws2.messages[0]);
+      expect(sent1).toEqual({ type: "ask", payload });
+      expect(sent2).toEqual({ type: "ask", payload });
+
+      // Resolve to avoid unhandled rejection
+      resolveAskAnswers([{ questionId: "q1", value: "A" }]);
+      return promise;
+    });
+
+    it("resolves when resolveAskAnswers is called", async () => {
+      const ws = trackClient(true);
+      addClient(ws);
+
+      const payload = { questions: [{ id: "q1", text: "Pick one", type: "single" as const, options: ["A", "B"] }] };
+      const promise = requestAskWithAnswers(payload);
+
+      const answers = [{ questionId: "q1", value: "A" }];
+      resolveAskAnswers(answers);
+
+      const result = await promise;
+      expect(result).toEqual(answers);
+      expect(hasPendingAsk()).toBe(false);
+    });
+
+    it("rejects when rejectAskAnswers is called", async () => {
+      const ws = trackClient(true);
+      addClient(ws);
+
+      const payload = { questions: [{ id: "q1", text: "Pick one", type: "single" as const, options: ["A", "B"] }] };
+      const promise = requestAskWithAnswers(payload);
+
+      rejectAskAnswers("Client disconnected");
+
+      await expect(promise).rejects.toThrow("Client disconnected");
+      expect(hasPendingAsk()).toBe(false);
+    });
+
+    it("resolveAskAnswers is a no-op with no pending request", () => {
+      // Should not throw
+      resolveAskAnswers([{ questionId: "q1", value: "A" }]);
+    });
+
+    it("rejectAskAnswers is a no-op with no pending request", () => {
+      // Should not throw
+      rejectAskAnswers("some reason");
     });
   });
 });
