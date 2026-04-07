@@ -44,7 +44,8 @@ program
 program
   .command("draw")
   .description("Send draw commands to the canvas")
-  .argument("<json>", "DrawPayload JSON string or - to read from stdin")
+  .argument("<input>", "DrawPayload JSON/DSL string or - to read from stdin")
+  .option("--dsl", "Parse input as DSL instead of JSON")
   .option("--no-animate", "Render shapes instantly without animation")
   .option("-s, --session <id>", "Session ID")
   .action(drawAction);
@@ -52,7 +53,8 @@ program
 program
   .command("ask")
   .description("Send visual questions to the user")
-  .argument("<json>", "AskPayload JSON string or - to read from stdin")
+  .argument("<input>", "AskPayload JSON/DSL string or - to read from stdin")
+  .option("--dsl", "Parse input as DSL instead of JSON")
   .option("-s, --session <id>", "Session ID")
   .action(askAction);
 

@@ -17,6 +17,105 @@ Use this skill when you want to:
 - Illustrate concepts with shapes, arrows, and text
 - Ask the user to draw or annotate on the canvas as feedback
 
+## Drawing Format (DSL)
+
+The canvas supports a concise DSL (domain-specific language) for drawing. Use `--dsl` with `draw` and `ask` commands. The DSL handles layout automatically — no manual coordinate math needed.
+
+### Shapes
+
+```
+box "Label" WIDTHxHEIGHT                           # Rectangle
+box "Label" WIDTHxHEIGHT fill=solid color=#8AAD5A   # With attributes
+box "Container" pad=20 { ...children... }            # Auto-sized container
+circle "Node" 60                                     # Circle (radius)
+circle "Dot" 30 fill=solid color=#D4726A
+ellipse "Badge" 180x100                              # Ellipse
+```
+
+Attributes: `fill` (hachure/solid/zigzag/cross-hatch/dots/dashed/zigzag-line/none), `color` (#hex), `opacity` (0-1), `pad` (container only)
+
+### Text
+
+```
+text "Hello World"
+text "Title" size=28 align=center weight=bold
+text "Subtitle" size=14 style=italic color=#555555 opacity=0.5
+```
+
+Attributes: `size` (font px), `align` (left/center/right), `weight` (bold/normal), `style` (italic/normal), `color`, `opacity`
+
+### Layout
+
+```
+row gap=40 {                    # Horizontal: [A] [B] [C]
+  box "A" 200x150
+  box "B" 200x150
+}
+
+stack gap=20 {                  # Vertical
+  box "Header" 400x60
+  box "Content" 400x200
+}
+
+stack gap=20 {                  # Nesting
+  box "Nav" 600x50 fill=none
+  row gap=20 {
+    box "Sidebar" 150x300 fill=none
+    box "Main" 430x300 fill=none
+  }
+}
+```
+
+### Lines & Arrows
+
+```
+line 100,200 -> 400,200                        # Absolute coords
+arrow 100,300 -> 400,300 "data flow"           # With label
+arrow "Frontend" -> "Backend" "API calls"      # Label-based (auto-routes edge to edge)
+```
+
+### Groups & Connectors
+
+```
+group #start { box "Start" 140x60 }
+group #process { box "Process" 140x60 }
+group #end { box "End" 140x60 }
+connector #start -> #process
+connector #process -> #end "next step"
+```
+
+Shorthand: `#start -> #process` (without `connector` keyword)
+
+### Ask Blocks
+
+```
+ask {
+  question #q1 single "Which layout?" {
+    options "Layout A" | "Layout B"
+    row gap=40 {
+      box "Layout A" 200x150 fill=none color=#7198C9
+      box "Layout B" 200x150 fill=none color=#8AAD5A
+    }
+  }
+  question #q2 text "Any notes?"
+}
+```
+
+Question types: `single` (pick one), `multi` (pick many), `text` (free text), `canvas` (draw)
+
+### Draw Attributes
+
+```
+narration "Here is the architecture"    # Animated text while shapes render
+animate=false                           # Instant rendering
+```
+
+### Other DSL Features
+
+- Semicolons separate statements on one line: `box "A" 200x100; box "B" 200x100`
+- Comments: `# This is a comment`
+- Colors: `#000000` (black), `#555555` (gray), `#D4726A` (red), `#D9925E` (orange), `#C4A73A` (yellow), `#8AAD5A` (green), `#6DBDAD` (teal), `#7198C9` (blue), `#9B85B5` (purple), `#D47C9A` (pink)
+
 ## Prerequisites
 
 The canvas server must be running. Start it first:
@@ -41,17 +140,19 @@ claude-canvas stop --all                 # stop all
 
 ## Drawing Shapes
 
-Send draw commands as JSON (use `--session` if multiple sessions are running):
+Send draw commands using DSL format (use `--session` if multiple sessions are running):
 
 ```bash
-claude-canvas draw --session a1b2c3d4 '{"commands": [...]}'
+claude-canvas draw --dsl --session a1b2c3d4 'row gap=40 { box "Frontend" 200x120; box "Backend" 200x120 }'
 ```
 
 Or pipe from stdin for large payloads:
 
 ```bash
-echo '{"commands": [...]}' | claude-canvas draw --session a1b2c3d4 -
+echo 'row gap=40 { box "A" 200x150; box "B" 200x150 }' | claude-canvas draw --dsl --session a1b2c3d4 -
 ```
+
+> Or use JSON format without `--dsl` flag: `claude-canvas draw '{"commands": [...]}'`
 
 ### DrawPayload Options
 
@@ -67,145 +168,86 @@ You can also disable animation via the CLI flag `--no-animate`.
 
 **Example with narration:**
 ```bash
-claude-canvas draw '{"narration": "Here is the system architecture", "commands": [...]}'
+claude-canvas draw --dsl 'narration "Here is the system architecture"; box "API" 200x120; box "DB" 200x120'
 ```
 
-### DrawCommand Types
+> Or JSON: `claude-canvas draw '{"narration": "Here is the system architecture", "commands": [...]}'`
 
-**Shapes** (all support `label?`, `color?`, `opacity?`, `fillStyle?`):
+### JSON Format (Alternative)
 
-| Type | Parameters | Example |
-|------|-----------|---------|
-| `rect` | `x, y, width, height` | `{"type":"rect","x":50,"y":50,"width":200,"height":120,"label":"Header"}` |
-| `circle` | `x, y, radius` | `{"type":"circle","x":200,"y":200,"radius":60,"label":"Node"}` |
-| `ellipse` | `x, y, width, height` | `{"type":"ellipse","x":300,"y":150,"width":180,"height":100}` |
-
-**Lines:**
-
-| Type | Parameters | Example |
-|------|-----------|---------|
-| `line` | `x1, y1, x2, y2` | `{"type":"line","x1":100,"y1":100,"x2":300,"y2":100}` |
-| `arrow` | `x1, y1, x2, y2` | `{"type":"arrow","x1":100,"y1":200,"x2":300,"y2":200,"label":"flow"}` |
-
-**Text:**
-
-| Type | Parameters | Example |
-|------|-----------|---------|
-| `text` | `x, y, content, fontSize?, textAlign?, fontWeight?, fontStyle?, underline?, linethrough?` | `{"type":"text","x":200,"y":50,"content":"Title","fontSize":24,"textAlign":"center"}` |
-
-Text supports rich formatting:
-- `fontWeight`: `"bold"` or `"normal"` (default)
-- `fontStyle`: `"italic"` or `"normal"` (default)
-- `underline`: `true` to underline
-- `linethrough`: `true` for strikethrough
-
-**Freehand:**
-
-| Type | Parameters | Example |
-|------|-----------|---------|
-| `freehand` | `points: [[x,y],...]` | `{"type":"freehand","points":[[10,10],[50,30],[90,10]]}` |
-
-**Groups and Connectors** (for flowcharts/diagrams):
-
-| Type | Parameters | Example |
-|------|-----------|---------|
-| `group` | `id, commands: DrawCommand[]` | `{"type":"group","id":"box-a","commands":[...]}` |
-| `connector` | `from, to, label?` | `{"type":"connector","from":"box-a","to":"box-b"}` |
-
-### Common Properties
-
-These optional properties work on all shapes, lines, and text:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `label` | `string` | Floating text label above the shape |
-| `color` | `string` | Hex color string (e.g. `"#D4726A"`). Default: muted blue |
-| `opacity` | `number` | Transparency from `0` (invisible) to `1` (opaque). Default: `1` |
-| `fillStyle` | `string` | Fill pattern for shapes (see below) |
-
-### Fill Styles
-
-Shapes default to `"hachure"` (hand-drawn cross-hatch). Options:
-`"hachure"` | `"solid"` | `"zigzag"` | `"cross-hatch"` | `"dots"` | `"dashed"` | `"zigzag-line"` | `"none"`
-
-Use `"none"` for wireframe outlines.
-
-### Colors
-
-Pass `color` as a hex string: `"color": "#D4726A"`. Default is a muted blue.
-
-Available preset colors for reference:
-`#000000` (black), `#555555` (gray), `#D4726A` (red), `#D9925E` (orange), `#C4A73A` (yellow), `#8AAD5A` (green), `#6DBDAD` (teal), `#7198C9` (blue), `#9B85B5` (purple), `#D47C9A` (pink)
+You can also use JSON without `--dsl`. See the protocol types in `src/protocol/types.ts` for the full `DrawCommand` schema. JSON requires manual x/y coordinates for every shape.
 
 ## Common Patterns
 
 ### Simple Diagram
 
 ```bash
-claude-canvas draw '{"commands": [
-  {"type": "rect", "x": 50, "y": 50, "width": 200, "height": 100, "label": "Frontend"},
-  {"type": "rect", "x": 350, "y": 50, "width": 200, "height": 100, "label": "Backend"},
-  {"type": "arrow", "x1": 250, "y1": 100, "x2": 350, "y2": 100, "label": "API"}
-]}'
+claude-canvas draw --dsl '
+row gap=40 {
+  box "Frontend" 200x100
+  box "Backend" 200x100
+}
+arrow "Frontend" -> "Backend" "API"
+'
 ```
 
 ### Flowchart with Connectors
 
 ```bash
-claude-canvas draw '{"commands": [
-  {"type": "group", "id": "start", "commands": [
-    {"type": "rect", "x": 200, "y": 30, "width": 140, "height": 60},
-    {"type": "text", "x": 270, "y": 50, "content": "Start", "textAlign": "center"}
-  ]},
-  {"type": "group", "id": "process", "commands": [
-    {"type": "rect", "x": 200, "y": 150, "width": 140, "height": 60},
-    {"type": "text", "x": 270, "y": 170, "content": "Process", "textAlign": "center"}
-  ]},
-  {"type": "group", "id": "end", "commands": [
-    {"type": "rect", "x": 200, "y": 270, "width": 140, "height": 60},
-    {"type": "text", "x": 270, "y": 290, "content": "End", "textAlign": "center"}
-  ]},
-  {"type": "connector", "from": "start", "to": "process"},
-  {"type": "connector", "from": "process", "to": "end"}
-]}'
+claude-canvas draw --dsl '
+group #start { box "Start" 140x60; text "Begin" align=center }
+group #process { box "Process" 140x60; text "Do work" align=center }
+group #end { box "End" 140x60; text "Done" align=center }
+#start -> #process
+#process -> #end
+'
 ```
 
 ### Wireframe Layout
 
 ```bash
-claude-canvas draw '{"commands": [
-  {"type": "rect", "x": 50, "y": 30, "width": 500, "height": 60, "label": "Navigation", "fillStyle": "none"},
-  {"type": "rect", "x": 50, "y": 110, "width": 150, "height": 300, "label": "Sidebar", "fillStyle": "none"},
-  {"type": "rect", "x": 220, "y": 110, "width": 330, "height": 300, "label": "Main Content", "fillStyle": "none"}
-]}'
+claude-canvas draw --dsl '
+stack gap=20 {
+  box "Navigation" 500x60 fill=none
+  row gap=20 {
+    box "Sidebar" 150x300 fill=none
+    box "Main Content" 330x300 fill=none
+  }
+}
+'
 ```
 
 ### Drawing with Narration
 
 ```bash
-claude-canvas draw '{"narration": "Let me show you how the components connect", "commands": [
-  {"type": "rect", "x": 100, "y": 100, "width": 180, "height": 80, "label": "Component A", "fillStyle": "hachure"},
-  {"type": "rect", "x": 400, "y": 100, "width": 180, "height": 80, "label": "Component B", "fillStyle": "solid"},
-  {"type": "arrow", "x1": 280, "y1": 140, "x2": 400, "y2": 140, "label": "data flow"}
-]}'
+claude-canvas draw --dsl '
+narration "Let me show you how the components connect"
+row gap=40 {
+  box "Component A" 180x80 fill=hachure
+  box "Component B" 180x80 fill=solid
+}
+arrow "Component A" -> "Component B" "data flow"
+'
 ```
 
 ### Using Styled Text
 
 ```bash
-claude-canvas draw '{"commands": [
-  {"type": "text", "x": 300, "y": 30, "content": "Architecture Overview", "fontSize": 28, "fontWeight": "bold", "textAlign": "center"},
-  {"type": "text", "x": 300, "y": 60, "content": "Draft — subject to change", "fontSize": 14, "fontStyle": "italic", "textAlign": "center", "opacity": 0.5}
-]}'
+claude-canvas draw --dsl '
+text "Architecture Overview" size=28 align=center weight=bold
+text "Draft — subject to change" size=14 align=center style=italic opacity=0.5
+'
 ```
 
 ### Using Color and Opacity
 
 ```bash
-claude-canvas draw '{"commands": [
-  {"type": "rect", "x": 50, "y": 50, "width": 200, "height": 100, "label": "Active", "color": "#8AAD5A", "fillStyle": "solid"},
-  {"type": "rect", "x": 300, "y": 50, "width": 200, "height": 100, "label": "Deprecated", "color": "#D4726A", "fillStyle": "hachure", "opacity": 0.4}
-]}'
+claude-canvas draw --dsl '
+row gap=40 {
+  box "Active" 200x100 color=#8AAD5A fill=solid
+  box "Deprecated" 200x100 color=#D4726A fill=hachure opacity=0.4
+}
+'
 ```
 
 ## Visual Q&A
@@ -215,35 +257,39 @@ Ask the user structured questions with visual context. Each question can have it
 **IMPORTANT: Make each option visually descriptive.** Don't just draw colored shapes — draw what the option actually represents. Include labels, inner text, example content, and structure so the user can understand each option at a glance without reading the question text.
 
 ```bash
-claude-canvas ask '{"questions": [
-  {
-    "id": "q1",
-    "text": "Which layout do you prefer?",
-    "type": "single",
-    "options": ["Layout A", "Layout B"],
-    "commands": [
-      {"type": "rect", "x": 50, "y": 80, "width": 250, "height": 200, "label": "Layout A", "fillStyle": "none", "color": "#7198C9"},
-      {"type": "rect", "x": 60, "y": 100, "width": 230, "height": 40, "fillStyle": "hachure", "color": "#7198C9"},
-      {"type": "text", "x": 175, "y": 110, "content": "Header / Nav", "textAlign": "center", "fontSize": 14},
-      {"type": "rect", "x": 60, "y": 150, "width": 70, "height": 120, "fillStyle": "hachure", "color": "#7198C9"},
-      {"type": "text", "x": 95, "y": 200, "content": "Side", "textAlign": "center", "fontSize": 12},
-      {"type": "rect", "x": 140, "y": 150, "width": 150, "height": 120, "fillStyle": "none", "color": "#7198C9"},
-      {"type": "text", "x": 215, "y": 200, "content": "Main Content", "textAlign": "center", "fontSize": 12},
-      {"type": "rect", "x": 380, "y": 80, "width": 250, "height": 200, "label": "Layout B", "fillStyle": "none", "color": "#8AAD5A"},
-      {"type": "rect", "x": 390, "y": 100, "width": 230, "height": 40, "fillStyle": "hachure", "color": "#8AAD5A"},
-      {"type": "text", "x": 505, "y": 110, "content": "Header / Nav", "textAlign": "center", "fontSize": 14},
-      {"type": "rect", "x": 390, "y": 150, "width": 230, "height": 120, "fillStyle": "none", "color": "#8AAD5A"},
-      {"type": "text", "x": 505, "y": 200, "content": "Full-Width Content", "textAlign": "center", "fontSize": 12}
-    ]
+claude-canvas ask --dsl '
+ask {
+  question #q1 single "Which layout do you prefer?" {
+    options "Layout A" | "Layout B"
+    row gap=40 {
+      box "Layout A" pad=10 {
+        stack gap=8 {
+          box "Header / Nav" 230x40 fill=hachure color=#7198C9
+          row gap=8 {
+            box "Side" 70x120 fill=hachure color=#7198C9
+            box "Main Content" 150x120 fill=none color=#7198C9
+          }
+        }
+      }
+      box "Layout B" pad=10 {
+        stack gap=8 {
+          box "Header / Nav" 230x40 fill=hachure color=#8AAD5A
+          box "Full-Width Content" 230x120 fill=none color=#8AAD5A
+        }
+      }
+    }
   }
-]}'
+}
+'
 ```
 
 You can also pipe from stdin for large payloads:
 
 ```bash
-echo '{"questions": [...]}' | claude-canvas ask -
+echo 'ask { question #q1 text "Your name?" }' | claude-canvas ask --dsl -
 ```
+
+> Or use JSON format without `--dsl` flag: `claude-canvas ask '{"questions": [...]}'`
 
 ### Question Types
 
@@ -293,11 +339,20 @@ The `path` field contains a PNG screenshot of the canvas. For `canvas`-type ques
 You can send multiple questions in a single `ask` command. The user navigates between them using arrow buttons and each question gets its own canvas state:
 
 ```bash
-claude-canvas ask '{"questions": [
-  {"id": "q1", "text": "Pick a layout", "type": "single", "options": ["A", "B"], "commands": [...]},
-  {"id": "q2", "text": "Name this feature", "type": "text", "commands": [...]},
-  {"id": "q3", "text": "Draw your changes", "type": "canvas", "commands": [...]}
-]}'
+claude-canvas ask --dsl '
+ask {
+  question #q1 single "Pick a layout" {
+    options "A" | "B"
+    row gap=40 { box "A" 200x150 fill=none; box "B" 200x150 fill=none }
+  }
+  question #q2 text "Name this feature" {
+    text "Feature Name" size=24 align=center
+  }
+  question #q3 canvas "Draw your changes" {
+    box "Draw here" 400x250 fill=none
+  }
+}
+'
 ```
 
 ## Other Commands
@@ -339,7 +394,7 @@ Send the status command **as your first tool call**, before generating the draw 
 claude-canvas status 'Drawing architecture diagram...'
 
 # Step 2: Draw command (takes time to generate — user sees status while waiting)
-claude-canvas draw '{"commands": [...]}'
+claude-canvas draw --dsl 'row gap=40 { box "A" 200x120; box "B" 200x120 }'
 
 # Step 3: Clear status when done
 claude-canvas status ''
@@ -354,7 +409,7 @@ For `ask` commands, send a status update first so the user knows questions are b
 claude-canvas status 'Preparing questions...'
 
 # Step 2: Ask command (takes time to generate — user sees status while waiting)
-claude-canvas ask '{"questions": [...]}'
+claude-canvas ask --dsl 'ask { question #q1 single "Pick one" { options "A" | "B" } }'
 ```
 
 The `ask` command blocks until the user submits answers, so no need to clear status — the question panel provides its own feedback.
@@ -383,15 +438,15 @@ Use `claude-canvas list` to check which sessions are currently running before st
 
 ## Tips
 
-- The visible canvas area is roughly 1200x800 pixels. Place shapes within this range.
-- Use `label` on shapes for clarity — labels float above shapes as text overlays.
-- Use `textAlign: "center"` with text inside groups to center text within boxes.
-- For groups, place the text `x` at the center of the rect (`rect.x + rect.width/2`).
+- **Prefer DSL format** (`--dsl`) — it handles layout automatically, no coordinate math needed.
+- Use `row` and `stack` to arrange shapes instead of calculating positions manually.
+- Use `fill=none` for wireframe outlines, `fill=solid` for filled shapes.
+- Use label-based arrows (`arrow "A" -> "B"`) to connect shapes by name.
 - After drawing, call `screenshot` to capture and verify what the user sees.
 - Use `clear --layer claude` to remove your drawings without erasing user drawings.
-- Connectors automatically route between group edges — just specify `from` and `to` group IDs.
+- Connectors automatically route between group edges — just specify `#fromId -> #toId`.
 - Use `narration` to explain what you're drawing as it appears on screen.
-- Use `--no-animate` or `"animate": false` when rendering many shapes at once for speed.
+- Use `--no-animate` or `animate=false` when rendering many shapes at once for speed.
 - The user can draw, annotate, move, and resize shapes on the canvas alongside your drawings.
 - Use different `color` values to visually distinguish different parts of a diagram.
 - Use `opacity` to de-emphasize background elements or show deprecated components.
