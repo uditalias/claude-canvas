@@ -90,6 +90,7 @@ export function tokenize(input: string): Token[] {
     if (ch === '"') {
       advance(); // consume opening quote
       let value = "";
+      let closed = false;
       while (pos < input.length) {
         const c = peek();
         if (c === "\\") {
@@ -97,20 +98,22 @@ export function tokenize(input: string): Token[] {
           const next = advance();
           if (next === '"') {
             value += '"';
+          } else if (next === "\\") {
+            value += "\\";
+          } else if (next === "n") {
+            value += "\n";
           } else {
-            value += "\\" + next;
+            value += next;
           }
         } else if (c === '"') {
           advance(); // consume closing quote
-          break;
-        } else if (c === undefined || pos >= input.length) {
+          closed = true;
           break;
         } else {
           value += advance();
         }
       }
-      // Check if we ended without closing quote
-      if (input[pos - 1] !== '"') {
+      if (!closed) {
         throw new Error(`Unterminated string at line ${startLine}, col ${startCol}`);
       }
       tokens.push({ type: "string", value, line: startLine, col: startCol });
@@ -159,7 +162,7 @@ export function tokenize(input: string): Token[] {
       if (isIdentChar(next)) {
         advance(); // consume #
         const id = readWhile(isIdentChar);
-        tokens.push({ type: "hash_id", value: "#" + id, line: startLine, col: startCol });
+        tokens.push({ type: "hash_id", value: id, line: startLine, col: startCol });
         continue;
       }
       // Otherwise skip unknown #

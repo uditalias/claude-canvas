@@ -50,9 +50,9 @@ describe("tokenizer", () => {
   it("tokenizes hash IDs (#my-id)", () => {
     const tokens = tokenize("#my-id #q1 #start");
     expect(tokens).toEqual([
-      { type: "hash_id", value: "#my-id", line: 1, col: 1 },
-      { type: "hash_id", value: "#q1", line: 1, col: 8 },
-      { type: "hash_id", value: "#start", line: 1, col: 12 },
+      { type: "hash_id", value: "my-id", line: 1, col: 1 },
+      { type: "hash_id", value: "q1", line: 1, col: 8 },
+      { type: "hash_id", value: "start", line: 1, col: 12 },
     ]);
   });
 
@@ -161,10 +161,10 @@ row gap=20 {
 
     expect(values).toEqual([
       "row", "gap=20", "{",
-      "box", "200x150", "#header", "Title", "fill=solid",
-      "circle", "50", "#icon",
+      "box", "200x150", "header", "Title", "fill=solid",
+      "circle", "50", "icon",
       "}",
-      "#header", "->", "#icon",
+      "header", "->", "icon",
     ]);
   });
 });
