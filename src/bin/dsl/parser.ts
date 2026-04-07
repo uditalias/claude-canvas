@@ -332,9 +332,7 @@ export function parse(tokens: Token[]): ASTNode[] {
     }
 
     const attrs = parseAttrs();
-    const node: ASTNode = { type: kind, from, to, attrs };
-    if (label) (node as any).label = label;
-    return node;
+    return { type: kind, from, to, label, attrs };
   }
 
   function parseArrow(): ASTNode {
