@@ -8,10 +8,8 @@ export async function setupAction() {
   const baseDir = getCurrentDir();
   const skillSourceDir = resolve(baseDir, "../../src/skill/claude-canvas");
   const skillSource = join(skillSourceDir, "SKILL.md");
-  const dslRefSource = join(skillSourceDir, "DSL-REFERENCE.md");
   const skillDestDir = join(homedir(), ".claude", "skills", "claude-canvas");
   const skillDest = join(skillDestDir, "SKILL.md");
-  const dslRefDest = join(skillDestDir, "DSL-REFERENCE.md");
   const skillUrl = "https://github.com/uditalias/claude-canvas/blob/main/src/skill/claude-canvas/SKILL.md";
 
   if (!existsSync(skillSource)) {
@@ -22,21 +20,15 @@ export async function setupAction() {
   const bundled = readFileSync(skillSource, "utf-8");
   const installed = existsSync(skillDest) ? readFileSync(skillDest, "utf-8") : null;
 
-  const bundledDslRef = existsSync(dslRefSource) ? readFileSync(dslRefSource, "utf-8") : null;
-  const installedDslRef = existsSync(dslRefDest) ? readFileSync(dslRefDest, "utf-8") : null;
-
-  const skillUpToDate = installed !== null && installed === bundled;
-  const dslRefUpToDate = bundledDslRef === null || (installedDslRef !== null && installedDslRef === bundledDslRef);
-
   console.log("");
-  if (skillUpToDate && dslRefUpToDate) {
+  if (installed && installed === bundled) {
     console.log("  \x1b[1m\x1b[32m✓\x1b[0m Skill is already installed and up to date.");
     console.log(`    \x1b[2m${skillDest}\x1b[0m`);
     console.log("");
     return;
   }
 
-  const isUpdate = installed !== null || installedDslRef !== null;
+  const isUpdate = installed !== null;
   console.log(isUpdate
     ? "  \x1b[1m\x1b[33m⚡\x1b[0m A new version of the claude-canvas skill is available."
     : "  \x1b[1m\x1b[36m✨\x1b[0m claude-canvas skill setup");
@@ -69,9 +61,6 @@ export async function setupAction() {
     try {
       mkdirSync(skillDestDir, { recursive: true });
       copyFileSync(skillSource, skillDest);
-      if (bundledDslRef) {
-        copyFileSync(dslRefSource, dslRefDest);
-      }
       console.log("");
       console.log(`  \x1b[1m\x1b[32m✓\x1b[0m Skill ${isUpdate ? "updated" : "installed"} to \x1b[36m${skillDest}\x1b[0m`);
       console.log("");
