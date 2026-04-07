@@ -12,7 +12,7 @@ export async function askAction(input: string, opts: { dsl?: boolean; session?: 
   let payload: Record<string, unknown>;
   if (opts.dsl) {
     try {
-      payload = parseDSL(body) as Record<string, unknown>;
+      payload = parseDSL(body) as unknown as Record<string, unknown>;
     } catch (err) {
       console.error((err as Error).message);
       process.exit(1);
@@ -26,6 +26,7 @@ export async function askAction(input: string, opts: { dsl?: boolean; session?: 
     }
   }
   const { session } = resolveSession(opts.session);
+
   const res = await httpPost(`http://127.0.0.1:${session.port}/api/ask`, payload);
   console.log(JSON.stringify(res));
 }

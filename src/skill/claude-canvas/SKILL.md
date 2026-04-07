@@ -414,6 +414,14 @@ claude-canvas ask --dsl 'ask { question #q1 single "Pick one" { options "A" | "B
 
 The `ask` command blocks until the user submits answers, so no need to clear status — the question panel provides its own feedback.
 
+**IMPORTANT — Waiting banner:** Right before running the `ask` command, you MUST output a text message to the user in the conversation (not inside a tool call) so they see it while the command blocks. Use this exact format:
+
+```
+⏳ **Waiting for your answers on the [Canvas](http://127.0.0.1:<port>)...** Click **Done** when you're ready.
+```
+
+Replace `<port>` with the actual session port. This message appears immediately in the conversation, so the user knows to switch to the browser — the `ask` command output itself is only visible after it finishes.
+
 ### Status message examples
 
 Use descriptive, context-aware messages:
