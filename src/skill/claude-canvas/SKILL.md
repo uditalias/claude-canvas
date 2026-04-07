@@ -19,9 +19,102 @@ Use this skill when you want to:
 
 ## Drawing Format (DSL)
 
-The canvas supports a concise DSL (domain-specific language) for drawing. Use `--dsl` with `draw` and `ask` commands. The DSL handles layout automatically -- no manual coordinate math needed.
+The canvas supports a concise DSL (domain-specific language) for drawing. Use `--dsl` with `draw` and `ask` commands. The DSL handles layout automatically — no manual coordinate math needed.
 
-See **DSL-REFERENCE.md** for the complete syntax reference with examples.
+### Shapes
+
+```
+box "Label" WIDTHxHEIGHT                           # Rectangle
+box "Label" WIDTHxHEIGHT fill=solid color=#8AAD5A   # With attributes
+box "Container" pad=20 { ...children... }            # Auto-sized container
+circle "Node" 60                                     # Circle (radius)
+circle "Dot" 30 fill=solid color=#D4726A
+ellipse "Badge" 180x100                              # Ellipse
+```
+
+Attributes: `fill` (hachure/solid/zigzag/cross-hatch/dots/dashed/zigzag-line/none), `color` (#hex), `opacity` (0-1), `pad` (container only)
+
+### Text
+
+```
+text "Hello World"
+text "Title" size=28 align=center weight=bold
+text "Subtitle" size=14 style=italic color=#555555 opacity=0.5
+```
+
+Attributes: `size` (font px), `align` (left/center/right), `weight` (bold/normal), `style` (italic/normal), `color`, `opacity`
+
+### Layout
+
+```
+row gap=40 {                    # Horizontal: [A] [B] [C]
+  box "A" 200x150
+  box "B" 200x150
+}
+
+stack gap=20 {                  # Vertical
+  box "Header" 400x60
+  box "Content" 400x200
+}
+
+stack gap=20 {                  # Nesting
+  box "Nav" 600x50 fill=none
+  row gap=20 {
+    box "Sidebar" 150x300 fill=none
+    box "Main" 430x300 fill=none
+  }
+}
+```
+
+### Lines & Arrows
+
+```
+line 100,200 -> 400,200                        # Absolute coords
+arrow 100,300 -> 400,300 "data flow"           # With label
+arrow "Frontend" -> "Backend" "API calls"      # Label-based (auto-routes edge to edge)
+```
+
+### Groups & Connectors
+
+```
+group #start { box "Start" 140x60 }
+group #process { box "Process" 140x60 }
+group #end { box "End" 140x60 }
+connector #start -> #process
+connector #process -> #end "next step"
+```
+
+Shorthand: `#start -> #process` (without `connector` keyword)
+
+### Ask Blocks
+
+```
+ask {
+  question #q1 single "Which layout?" {
+    options "Layout A" | "Layout B"
+    row gap=40 {
+      box "Layout A" 200x150 fill=none color=#7198C9
+      box "Layout B" 200x150 fill=none color=#8AAD5A
+    }
+  }
+  question #q2 text "Any notes?"
+}
+```
+
+Question types: `single` (pick one), `multi` (pick many), `text` (free text), `canvas` (draw)
+
+### Draw Attributes
+
+```
+narration "Here is the architecture"    # Animated text while shapes render
+animate=false                           # Instant rendering
+```
+
+### Other DSL Features
+
+- Semicolons separate statements on one line: `box "A" 200x100; box "B" 200x100`
+- Comments: `# This is a comment`
+- Colors: `#000000` (black), `#555555` (gray), `#D4726A` (red), `#D9925E` (orange), `#C4A73A` (yellow), `#8AAD5A` (green), `#6DBDAD` (teal), `#7198C9` (blue), `#9B85B5` (purple), `#D47C9A` (pink)
 
 ## Prerequisites
 
@@ -80,72 +173,9 @@ claude-canvas draw --dsl 'narration "Here is the system architecture"; box "API"
 
 > Or JSON: `claude-canvas draw '{"narration": "Here is the system architecture", "commands": [...]}'`
 
-### DrawCommand Types
+### JSON Format (Alternative)
 
-**Shapes** (all support `label?`, `color?`, `opacity?`, `fillStyle?`):
-
-| Type | Parameters | Example |
-|------|-----------|---------|
-| `rect` | `x, y, width, height` | `{"type":"rect","x":50,"y":50,"width":200,"height":120,"label":"Header"}` |
-| `circle` | `x, y, radius` | `{"type":"circle","x":200,"y":200,"radius":60,"label":"Node"}` |
-| `ellipse` | `x, y, width, height` | `{"type":"ellipse","x":300,"y":150,"width":180,"height":100}` |
-
-**Lines:**
-
-| Type | Parameters | Example |
-|------|-----------|---------|
-| `line` | `x1, y1, x2, y2` | `{"type":"line","x1":100,"y1":100,"x2":300,"y2":100}` |
-| `arrow` | `x1, y1, x2, y2` | `{"type":"arrow","x1":100,"y1":200,"x2":300,"y2":200,"label":"flow"}` |
-
-**Text:**
-
-| Type | Parameters | Example |
-|------|-----------|---------|
-| `text` | `x, y, content, fontSize?, textAlign?, fontWeight?, fontStyle?, underline?, linethrough?` | `{"type":"text","x":200,"y":50,"content":"Title","fontSize":24,"textAlign":"center"}` |
-
-Text supports rich formatting:
-- `fontWeight`: `"bold"` or `"normal"` (default)
-- `fontStyle`: `"italic"` or `"normal"` (default)
-- `underline`: `true` to underline
-- `linethrough`: `true` for strikethrough
-
-**Freehand:**
-
-| Type | Parameters | Example |
-|------|-----------|---------|
-| `freehand` | `points: [[x,y],...]` | `{"type":"freehand","points":[[10,10],[50,30],[90,10]]}` |
-
-**Groups and Connectors** (for flowcharts/diagrams):
-
-| Type | Parameters | Example |
-|------|-----------|---------|
-| `group` | `id, commands: DrawCommand[]` | `{"type":"group","id":"box-a","commands":[...]}` |
-| `connector` | `from, to, label?` | `{"type":"connector","from":"box-a","to":"box-b"}` |
-
-### Common Properties
-
-These optional properties work on all shapes, lines, and text:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `label` | `string` | Floating text label above the shape |
-| `color` | `string` | Hex color string (e.g. `"#D4726A"`). Default: muted blue |
-| `opacity` | `number` | Transparency from `0` (invisible) to `1` (opaque). Default: `1` |
-| `fillStyle` | `string` | Fill pattern for shapes (see below) |
-
-### Fill Styles
-
-Shapes default to `"hachure"` (hand-drawn cross-hatch). Options:
-`"hachure"` | `"solid"` | `"zigzag"` | `"cross-hatch"` | `"dots"` | `"dashed"` | `"zigzag-line"` | `"none"`
-
-Use `"none"` for wireframe outlines.
-
-### Colors
-
-Pass `color` as a hex string: `"color": "#D4726A"`. Default is a muted blue.
-
-Available preset colors for reference:
-`#000000` (black), `#555555` (gray), `#D4726A` (red), `#D9925E` (orange), `#C4A73A` (yellow), `#8AAD5A` (green), `#6DBDAD` (teal), `#7198C9` (blue), `#9B85B5` (purple), `#D47C9A` (pink)
+You can also use JSON without `--dsl`. See the protocol types in `src/protocol/types.ts` for the full `DrawCommand` schema. JSON requires manual x/y coordinates for every shape.
 
 ## Common Patterns
 
@@ -422,4 +452,3 @@ Use `claude-canvas list` to check which sessions are currently running before st
 - Use `opacity` to de-emphasize background elements or show deprecated components.
 - **For Q&A questions**: draw the actual content each option represents, not just colored shapes. Include inner structure, labels, and example text so the user can visually compare options.
 - **Always stop sessions** when done — call `claude-canvas stop --session <id>` after collecting answers.
-- See **DSL-REFERENCE.md** for the complete DSL syntax reference.
