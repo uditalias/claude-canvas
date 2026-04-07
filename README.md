@@ -34,9 +34,16 @@
 
 **claude-canvas** is a shared visual canvas that lets Claude **draw diagrams and ask visual questions**, and lets you **answer by clicking, typing, or drawing** — right in the browser.
 
-<p align="center">
-  <img src="docs/screenshots/ui-ask.png" alt="Visual Q&A — Claude draws layout options, user picks one" width="700" />
-</p>
+<table align="center">
+  <tr>
+    <td align="center"><strong>Without canvas</strong></td>
+    <td align="center"><strong>With canvas</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/terminal-ask.png" alt="Terminal — Claude asks visual questions as ASCII text" width="340" /></td>
+    <td><img src="docs/screenshots/ui-ask.png" alt="Canvas — Claude draws layout options, user picks one" width="340" /></td>
+  </tr>
+</table>
 
 ### What it solves
 
