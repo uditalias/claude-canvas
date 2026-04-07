@@ -5,15 +5,15 @@
 <h1 align="center">claude-canvas</h1>
 
 <p align="center">
-  <strong>Give Claude Code eyes and a whiteboard. Claude draws diagrams, wireframes, and mockups on a shared canvas, asks visual questions, and collects your feedback — all without leaving the terminal.</strong>
+  <strong>Give Claude Code eyes and a whiteboard. Install the skill, start a session, and Claude automatically draws diagrams, wireframes, and mockups on a shared canvas — asking visual questions and collecting your feedback instead of cluttering the terminal.</strong>
 </p>
 
 <p align="center">
+  <a href="https://github.com/uditalias/claude-canvas/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/uditalias/claude-canvas/test.yml?style=for-the-badge&logo=github&label=tests" alt="Build Status" /></a>
   <a href="https://www.npmjs.com/package/claude-canvas"><img src="https://img.shields.io/npm/v/claude-canvas?style=for-the-badge&logo=npm&logoColor=white&color=CB3837" alt="npm version" /></a>
   <a href="https://github.com/uditalias/claude-canvas/blob/main/LICENSE"><img src="https://img.shields.io/github/license/uditalias/claude-canvas?style=for-the-badge&color=blue" alt="License" /></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D18-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js" /></a>
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/typescript-5.4-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
-  <a href="https://github.com/uditalias/claude-canvas/issues"><img src="https://img.shields.io/github/issues/uditalias/claude-canvas?style=for-the-badge&logo=github&color=orange" alt="Issues" /></a>
 </p>
 
 <p align="center">
@@ -33,7 +33,7 @@
 
 [Claude Code](https://claude.ai/code) is powerful, but it's stuck in text. When Claude needs to show you a layout, compare design options, or ask "which of these do you prefer?" — a terminal isn't enough.
 
-**claude-canvas** is a shared visual canvas that lets Claude **draw diagrams and ask visual questions**, and lets you **answer by clicking, typing, or drawing** — right in the browser.
+**claude-canvas** is a shared visual canvas for Claude Code. Once installed, Claude **automatically** draws diagrams, sketches wireframes, and asks visual questions on the canvas — you just answer by clicking, typing, or drawing in the browser. You don't run any drawing commands yourself; the included **Claude Code skill** teaches Claude when and how to use the canvas.
 
 <table align="center" width="100%">
   <tr>
@@ -48,29 +48,32 @@
 
 ### What it solves
 
-- **"Which layout do you prefer?"** — Claude draws the options, you click your choice
+- **"Which layout do you prefer?"** — Claude draws the options on canvas, you click your choice
 - **"What should this look like?"** — Claude sketches a wireframe, you annotate it
 - **"Here's the architecture"** — Claude draws a diagram you can actually see, not ASCII art
 - **"Name this feature"** — Claude shows context on canvas, you type your answer
 
 ### How It Works
 
-1. **`claude-canvas start`** — opens a browser tab with a shared canvas
-2. **Claude draws** diagrams, wireframes, or mockups on the canvas
-3. **Claude asks** visual questions — a floating panel appears with your options
-4. **You answer** by clicking choices, typing text, or drawing on the canvas
-5. **Claude gets your answers** automatically when you click Done — no extra steps
+1. **Install & setup** — `npm install -g claude-canvas && claude-canvas setup`
+2. **Talk to Claude** — just use Claude Code as you normally would
+3. **Claude opens the canvas** — when visuals would help, Claude starts a session and opens a browser tab automatically
+4. **Claude draws** — diagrams, wireframes, and mockups appear on the canvas
+5. **You respond** — answer visual questions by clicking, typing, or drawing in the browser
+6. **Claude continues** — your answers flow back to Claude automatically
+
+> **You never need to run any `claude-canvas` commands yourself.** The skill handles everything — Claude calls the CLI under the hood using a compact [DSL](#dsl-format) that minimizes token usage.
 
 ### Key Features
 
+- **Fully automatic** — the Claude Code skill teaches Claude when and how to use the canvas; no manual commands needed
 - **Visual Q&A** — structured questions with per-question canvas drawings, answers returned automatically
-- **Shared drawing surface** — Claude draws via CLI, you draw interactively in the browser, both in real-time
+- **Shared drawing surface** — Claude draws on the canvas, you draw interactively in the browser, both in real-time
 - **Compact DSL** — a concise drawing language that uses 3-5x fewer tokens than JSON, with auto-layout and label-based arrow routing ([reference](src/skill/claude-canvas/DSL-REFERENCE.md))
 - **Hand-drawn aesthetic** — powered by [Rough.js](https://roughjs.com), everything looks like a natural whiteboard sketch
 - **Multiple fill styles** — hachure, solid, zigzag, cross-hatch, dots, dashed, and wireframe outlines
 - **Status badge** — Claude updates a live status message in the browser so you always know what it's working on
 - **Export** — save as PNG, SVG, or JSON
-- **Claude Code skill** — install once, Claude automatically uses the canvas when it makes sense
 
 <p align="center">
   <img src="docs/screenshots/ui-drawing.png" alt="claude-canvas UI — architecture diagram with toolbar and canvas" width="700" />
@@ -117,91 +120,26 @@ claude-canvas setup
 
 ## Quick Start
 
-**1. Start a canvas session:**
+**1. Install and set up the skill:**
 
 ```bash
-claude-canvas start
+npm install -g claude-canvas
+claude-canvas setup
 ```
 
-This opens a browser tab with a fresh canvas and returns session info:
+**2. Use Claude Code as normal:**
 
-```json
-{"sessionId": "a1b2c3d4", "port": 7890, "url": "http://127.0.0.1:7890", "pid": 1234}
-```
+That's it. When visuals would help — architecture diagrams, wireframe comparisons, design decisions — Claude will automatically start a canvas session, open a browser tab, and draw there instead of cluttering the terminal.
 
-**2. Ask a visual question:**
-
-```bash
-# DSL format (concise — recommended)
-claude-canvas ask --dsl 'ask {
-  question #q1 single "Which layout do you prefer?" {
-    options "Sidebar" | "Top Nav"
-    row gap=40 {
-      box "Sidebar" 200x150 fill=none
-      box "Top Nav" 200x150 fill=none
-    }
-  }
-}'
-
-# JSON format (verbose)
-claude-canvas ask '{"questions": [
-  {
-    "id": "q1",
-    "text": "Which layout do you prefer?",
-    "type": "single",
-    "options": ["Sidebar", "Top Nav"],
-    "commands": [
-      {"type": "rect", "x": 50, "y": 50, "width": 200, "height": 150, "label": "Sidebar"},
-      {"type": "rect", "x": 300, "y": 50, "width": 200, "height": 150, "label": "Top Nav"}
-    ]
-  }
-]}'
-```
-
-The command blocks. In the browser, answer the question and click Done. The command returns:
-
-```json
-{"ok": true, "status": "answered", "path": "/tmp/claude-canvas/canvas-123.png", "answers": [{"questionId": "q1", "value": "Sidebar"}]}
-```
-
-**3. Or just draw:**
-
-```bash
-# DSL format (concise — recommended)
-claude-canvas draw --dsl 'row gap=40 {
-  box "Frontend" 200x100
-  box "Backend" 200x100
-}
-arrow "Frontend" -> "Backend" "API"'
-
-# JSON format (verbose)
-claude-canvas draw '{"commands": [
-  {"type": "rect", "x": 50, "y": 50, "width": 200, "height": 100, "label": "Frontend"},
-  {"type": "rect", "x": 350, "y": 50, "width": 200, "height": 100, "label": "Backend"},
-  {"type": "arrow", "x1": 250, "y1": 100, "x2": 350, "y2": 100, "label": "API"}
-]}'
-```
-
-**4. List running sessions:**
-
-```bash
-claude-canvas list
-```
-
-**5. Stop the session when done:**
-
-```bash
-claude-canvas stop --all               # Stop all sessions
-claude-canvas stop -s a1b2c3d4         # Stop a specific session
-```
+For example, ask Claude to *"design a dashboard layout"* or *"show me the system architecture"*. Claude will open the canvas, draw the diagrams, and if it needs your input, a question panel will appear in the browser for you to answer.
 
 ---
 
 ## Visual Q&A / Ask
 
-The core feature of claude-canvas. Claude sends structured questions with visual context — each question gets its own canvas drawing. A floating panel appears in the browser where you answer by clicking options, typing text, or drawing.
+The core feature of claude-canvas. When Claude needs your input on a visual decision, it draws options on the canvas and presents a floating question panel in your browser. You answer by clicking options, typing text, or drawing — then click Done. Claude receives your answers automatically and continues working.
 
-The `ask` command **blocks until you click Done**, then returns all answers and a screenshot in one call. No polling, no extra steps.
+> You don't run the `ask` command yourself — Claude calls it via the skill. The examples below show what Claude sends under the hood.
 
 ### The Flow
 
@@ -219,26 +157,20 @@ Users select answers via interactive pill buttons. Selected answers are highligh
   <img src="docs/screenshots/ui-ask-answered.png" alt="Visual Q&A — answer selected" width="700" />
 </p>
 
-### Sending Questions
+### Example (what Claude sends)
 
 ```bash
-claude-canvas ask '{"questions": [
-  {
-    "id": "q1",
-    "text": "Which layout do you prefer?",
-    "type": "single",
-    "options": ["Layout A", "Layout B", "Layout C"],
-    "commands": [
-      {"type": "rect", "x": 80, "y": 80, "width": 200, "height": 150, "label": "Layout A"},
-      {"type": "rect", "x": 350, "y": 80, "width": 200, "height": 150, "label": "Layout B"}
-    ]
-  },
-  {
-    "id": "q2",
-    "text": "What should the title be?",
-    "type": "text"
+# Claude uses the DSL format to minimize token usage:
+claude-canvas ask --dsl 'ask {
+  question #q1 single "Which layout do you prefer?" {
+    options "Layout A" | "Layout B" | "Layout C"
+    row gap=40 {
+      box "Layout A" 200x150 fill=none
+      box "Layout B" 200x150 fill=none
+    }
   }
-]}'
+  question #q2 text "What should the title be?"
+}'
 ```
 
 ### Question Types
@@ -252,7 +184,7 @@ claude-canvas ask '{"questions": [
 
 ### Response
 
-The `ask` command blocks and returns:
+The `ask` command blocks until you click Done, then Claude receives:
 
 ```json
 {
@@ -278,7 +210,7 @@ If the browser disconnects before the user submits:
 
 ### Canvas-Type Answers
 
-For `canvas`-type questions, Claude draws a diagram and the user responds by drawing directly on the canvas. The answer includes a snapshot of what the user drew:
+For `canvas`-type questions, Claude draws a diagram and you respond by drawing directly on the canvas. The answer includes a snapshot of what you drew:
 
 <p align="center">
   <img src="docs/screenshots/ui-canvas-answer.png" alt="Canvas Q&A — Claude draws a wireframe, user annotates with freehand drawings" width="700" />
@@ -292,14 +224,17 @@ For `canvas`-type questions, Claude draws a diagram and the user responds by dra
 
 ## Drawing
 
-Claude can draw shapes, diagrams, and wireframes on the canvas with the `draw` command:
+Claude draws shapes, diagrams, and wireframes on the canvas automatically when visuals would help. The skill instructs Claude to use a compact [DSL format](#dsl-format) for all drawing, which reduces token usage by 3-5x compared to JSON.
+
+> You don't run `draw` commands yourself — Claude calls them via the skill. The examples below show what Claude sends under the hood.
 
 ```bash
-claude-canvas draw '{"commands": [
-  {"type": "rect", "x": 50, "y": 50, "width": 200, "height": 100, "label": "Frontend"},
-  {"type": "rect", "x": 350, "y": 50, "width": 200, "height": 100, "label": "Backend"},
-  {"type": "arrow", "x1": 250, "y1": 100, "x2": 350, "y2": 100, "label": "API"}
-]}'
+# What Claude sends (DSL):
+claude-canvas draw --dsl 'row gap=40 {
+  box "Frontend" 200x100
+  box "Backend" 200x100
+}
+arrow "Frontend" -> "Backend" "API"'
 ```
 
 <p align="center">
@@ -384,20 +319,18 @@ Shapes default to `"hachure"`. Set `fillStyle` on any shape:
 
 ## DSL Format
 
-claude-canvas includes a concise DSL (domain-specific language) as an alternative to JSON for `draw` and `ask` commands. Add the `--dsl` flag to use it.
+claude-canvas includes a concise DSL (domain-specific language) for drawing commands. The Claude Code skill instructs Claude to **always use the DSL** instead of JSON — it's **3-5x fewer tokens**, which keeps conversations within context limits during complex visual sessions.
 
-The DSL is **significantly more compact** than JSON — typically 3-5x fewer tokens. The included [Claude Code skill](#claude-code-skill) instructs Claude to **prefer DSL by default**, which reduces token usage and keeps conversations within context limits during complex visual sessions.
+The DSL handles **automatic layout** via `row` and `stack` containers (no manual coordinate math) and supports **label-based arrow routing** (reference shapes by name instead of pixel positions). Claude uses these features automatically — you don't need to know the DSL syntax yourself.
 
-The DSL also handles **automatic layout** via `row` and `stack` containers, eliminating manual coordinate math. And it supports **label-based arrow routing** — reference shapes by name instead of calculating pixel positions.
-
-### DSL vs JSON comparison
+### Why DSL?
 
 ```bash
-# DSL — 2 lines, auto-layout, no coordinates
+# DSL — 2 lines, auto-layout, no coordinates (what Claude sends)
 claude-canvas draw --dsl 'row gap=40 { box "Frontend" 200x100; box "Backend" 200x100 }
 arrow "Frontend" -> "Backend" "API"'
 
-# JSON — 5 lines, manual x/y for every shape
+# JSON equivalent — 5 lines, manual x/y for every shape
 claude-canvas draw '{"commands": [
   {"type": "rect", "x": 50, "y": 50, "width": 200, "height": 100, "label": "Frontend"},
   {"type": "rect", "x": 350, "y": 50, "width": 200, "height": 100, "label": "Backend"},
@@ -405,7 +338,7 @@ claude-canvas draw '{"commands": [
 ]}'
 ```
 
-### Quick examples
+### DSL examples (what Claude generates)
 
 ```bash
 # Shapes with layout
@@ -439,13 +372,13 @@ claude-canvas ask --dsl 'ask {
 }'
 ```
 
-For the full DSL syntax, shapes, layout containers, attributes, and more examples, see the [DSL Reference](src/skill/claude-canvas/DSL-REFERENCE.md).
+For the full DSL syntax — shapes, layout containers, attributes, and more examples — see the [DSL Reference](src/skill/claude-canvas/DSL-REFERENCE.md). This reference is also included in the skill, so other LLMs that read it can use claude-canvas the same way.
 
 ---
 
 ## Interactive Canvas
 
-The browser canvas is a full interactive drawing surface, not just a display. Users can draw alongside Claude's shapes in real-time.
+The browser canvas is a full interactive drawing surface, not just a display. You can draw alongside Claude's shapes in real-time — annotate diagrams, sketch alternatives, or respond to canvas-type questions.
 
 ### Drawing Tools
 
@@ -484,7 +417,7 @@ Use `claude-canvas clear --layer claude` to remove Claude's drawings without aff
 
 ## Claude Code Skill
 
-Install the included skill so Claude Code automatically knows when and how to use the canvas.
+The skill is what makes everything automatic. It teaches Claude Code **when** to use the canvas and **how** to call the CLI — you don't need to learn any commands.
 
 ### Installation
 
@@ -492,7 +425,7 @@ Install the included skill so Claude Code automatically knows when and how to us
 claude-canvas setup
 ```
 
-This interactively installs (or updates) the skill to `~/.claude/skills/claude-canvas/`. You can also install it manually:
+This installs (or updates) the skill to `~/.claude/skills/claude-canvas/`. You can also install it manually:
 
 ```bash
 cp -r $(npm root -g)/claude-canvas/src/skill/claude-canvas ~/.claude/skills/
@@ -507,13 +440,15 @@ Once installed, Claude Code will automatically use the canvas when it makes sens
 - Creating flowcharts to explain processes
 - Presenting visual options and asking for your preference via Q&A
 
-The skill instructs Claude to **prefer the DSL format** over JSON for all draw and ask commands. This reduces token usage significantly (3-5x fewer tokens), helping keep conversations within context limits during complex visual sessions. See the [DSL Reference](src/skill/claude-canvas/DSL-REFERENCE.md) for the full syntax.
+The skill instructs Claude to use the **DSL format** for all draw and ask commands, which uses 3-5x fewer tokens than JSON. This keeps conversations within context limits during complex visual sessions. The [DSL Reference](src/skill/claude-canvas/DSL-REFERENCE.md) is bundled with the skill so Claude (and other LLMs that read the skill files) can use the full DSL syntax.
 
-You don't need to explicitly tell Claude to use the canvas. The skill teaches Claude when the canvas is the right tool for the job.
+You don't need to tell Claude to use the canvas — the skill handles that. Just have a conversation, and Claude will reach for the canvas when visuals would help.
 
 ---
 
 ## CLI Reference
+
+> The CLI is what Claude (and other LLMs) call under the hood. You typically only need `start`, `stop`, and `setup`. The `draw`, `ask`, `screenshot`, and other commands are called automatically by the skill.
 
 All commands accept `-s, --session <id>`. You can omit it when only one session is running.
 
@@ -541,7 +476,7 @@ Both `ask` and `draw` accept `-` to read from stdin. Use `--dsl` for the compact
 
 ### Status Badge
 
-Use `claude-canvas status` to show a live status message in the browser. Claude updates this automatically so you always know what it's working on:
+Claude updates a live status message in the browser so you always know what it's working on:
 
 <p align="center">
   <img src="docs/screenshots/status-line.png" alt="Status badge — shows 'Designing authentication flow...' while Claude draws a diagram" width="700" />
@@ -620,6 +555,8 @@ npm run build && npx playwright test
 ---
 
 ## Examples
+
+> These show the commands Claude generates automatically via the skill. You don't need to write these yourself — they're here for reference and for other LLMs reading this documentation.
 
 <details>
 <summary><strong>Architecture Diagram (DSL)</strong></summary>
@@ -784,14 +721,11 @@ claude-canvas ask '{"questions": [
 
 ## Tips
 
-- The visible canvas area is roughly **1200 x 800 pixels** — place shapes within this range
-- Use `label` on shapes for clarity — labels float above shapes as text overlays
-- Use `textAlign: "center"` with text inside groups to center text within boxes
-- For groups, place the text `x` at the center of the rect (`rect.x + rect.width / 2`)
-- After drawing, call `screenshot` to capture and verify what the user sees
-- Use `clear --layer claude` to remove Claude's drawings without erasing user drawings
-- Connectors automatically route between group edges — just specify `from` and `to` group IDs
-- Pass `color` as a hex string for custom colors: `"color": "#D4726A"`
+- **No setup beyond install** — Claude starts and stops canvas sessions automatically
+- **You can draw too** — use the toolbar to annotate Claude's diagrams or sketch your own ideas
+- **Canvas-type questions** — when Claude asks a `canvas` question, draw your answer directly on the canvas
+- **Export your work** — use `claude-canvas export -f png|svg|json` to save diagrams
+- **Multiple sessions** — each `start` creates an isolated session; use `claude-canvas list` to see them all
 
 ---
 
