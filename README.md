@@ -494,33 +494,51 @@ Claude updates a live status message in the browser so you always know what it's
 
 ```
 src/
-├── bin/claude-canvas.ts      # CLI entry point (Commander)
+├── bin/
+│   ├── claude-canvas.ts        # CLI entry point (Commander)
+│   ├── actions/                # CLI subcommand handlers
+│   │   ├── ask.ts, draw.ts     # Drawing & Q&A commands
+│   │   ├── start.ts, stop.ts   # Session lifecycle
+│   │   └── setup.ts, update.ts # Skill installation & updates
+│   ├── dsl/                    # DSL compiler (text → DrawCommands)
+│   │   ├── tokenizer.ts        # Lexer
+│   │   ├── parser.ts           # AST builder
+│   │   └── layout.ts           # Auto-layout engine (row/stack)
+│   └── utils.ts, version.ts
 ├── server/
-│   ├── router.ts             # REST API endpoints
-│   ├── websocket.ts          # WebSocket server
-│   ├── state.ts              # In-memory state & broadcast
-│   └── process.ts            # Session management (PID/port)
+│   ├── router.ts               # REST API endpoints
+│   ├── websocket.ts            # WebSocket server
+│   ├── state.ts                # In-memory state & broadcast
+│   └── process.ts              # Session management (PID/port)
 ├── client/
 │   ├── components/
-│   │   ├── Canvas.tsx        # Main canvas view
-│   │   ├── Toolbox.tsx       # Drawing toolbar
-│   │   ├── QuestionPanel.tsx # Q&A floating panel
-│   │   ├── Hud.tsx           # Connection status & zoom
-│   │   └── ContextMenu.tsx   # Right-click context menu
+│   │   ├── Canvas.tsx          # Main canvas view
+│   │   ├── Toolbox.tsx         # Drawing toolbar
+│   │   ├── QuestionPanel.tsx   # Q&A floating panel
+│   │   ├── Hud.tsx             # Connection status & zoom
+│   │   ├── ContextMenu.tsx     # Right-click context menu
+│   │   ├── Narration.tsx       # Animated narration text
+│   │   └── ShortcutsOverlay.tsx
 │   ├── hooks/
-│   │   ├── useCanvas.ts      # Fabric.js canvas + rough.js rendering
-│   │   ├── useDrawingTools.ts# Interactive drawing tools
-│   │   ├── useWebSocket.ts   # WS connection + auto-reconnect
-│   │   ├── useToolState.ts   # Tool selection + shortcuts
-│   │   ├── useUndoRedo.ts    # Canvas history (50 states)
-│   │   ├── useSnapGuides.ts  # Alignment snap guides
-│   │   └── useQuestionPanel.ts# Q&A state management
+│   │   ├── useCanvas.ts        # Fabric.js canvas + rough.js rendering
+│   │   ├── useDrawingTools.ts  # Interactive drawing tools
+│   │   ├── useWebSocket.ts     # WS connection + auto-reconnect
+│   │   ├── useToolState.ts     # Tool selection + shortcuts
+│   │   ├── useUndoRedo.ts      # Canvas history (50 states)
+│   │   ├── useSnapGuides.ts    # Alignment snap guides
+│   │   ├── useQuestionPanel.ts # Q&A state management
+│   │   └── ...                 # Zoom, export, label editing, etc.
 │   └── lib/
-│       └── rough-line.ts     # Custom Fabric objects for rough.js
+│       ├── rough-line.ts       # Custom Fabric objects for rough.js
+│       ├── render-engine.ts    # Shape rendering pipeline
+│       └── wobble.ts           # Hand-drawn effect engine
 ├── protocol/
-│   └── types.ts              # Shared types (DrawCommand, WsMessage, etc.)
-└── skill/
-    └── claude-canvas.md      # Claude Code skill definition
+│   └── types.ts                # Shared types (DrawCommand, WsMessage, etc.)
+├── skill/
+│   └── claude-canvas/
+│       ├── SKILL.md            # Claude Code skill definition
+│       └── DSL-REFERENCE.md    # Full DSL syntax reference
+└── utils/                      # Shared utilities (browser, port, screenshot)
 ```
 
 </details>
