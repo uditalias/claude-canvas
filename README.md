@@ -21,6 +21,7 @@
   <a href="#quick-start">Quick Start</a> &bull;
   <a href="#visual-qa--ask">Visual Q&A</a> &bull;
   <a href="#drawing">Drawing</a> &bull;
+  <a href="#dsl-format">DSL Format</a> &bull;
   <a href="#interactive-canvas">Interactive Canvas</a> &bull;
   <a href="#claude-code-skill">Claude Code Skill</a> &bull;
   <a href="#cli-reference">CLI Reference</a>
@@ -64,6 +65,7 @@
 
 - **Visual Q&A** — structured questions with per-question canvas drawings, answers returned automatically
 - **Shared drawing surface** — Claude draws via CLI, you draw interactively in the browser, both in real-time
+- **Compact DSL** — a concise drawing language that uses 3-5x fewer tokens than JSON, with auto-layout and label-based arrow routing ([reference](src/skill/claude-canvas/DSL-REFERENCE.md))
 - **Hand-drawn aesthetic** — powered by [Rough.js](https://roughjs.com), everything looks like a natural whiteboard sketch
 - **Multiple fill styles** — hachure, solid, zigzag, cross-hatch, dots, dashed, and wireframe outlines
 - **Status badge** — Claude updates a live status message in the browser so you always know what it's working on
@@ -130,6 +132,18 @@ This opens a browser tab with a fresh canvas and returns session info:
 **2. Ask a visual question:**
 
 ```bash
+# DSL format (concise — recommended)
+claude-canvas ask --dsl 'ask {
+  question #q1 single "Which layout do you prefer?" {
+    options "Sidebar" | "Top Nav"
+    row gap=40 {
+      box "Sidebar" 200x150 fill=none
+      box "Top Nav" 200x150 fill=none
+    }
+  }
+}'
+
+# JSON format (verbose)
 claude-canvas ask '{"questions": [
   {
     "id": "q1",
@@ -153,6 +167,14 @@ The command blocks. In the browser, answer the question and click Done. The comm
 **3. Or just draw:**
 
 ```bash
+# DSL format (concise — recommended)
+claude-canvas draw --dsl 'row gap=40 {
+  box "Frontend" 200x100
+  box "Backend" 200x100
+}
+arrow "Frontend" -> "Backend" "API"'
+
+# JSON format (verbose)
 claude-canvas draw '{"commands": [
   {"type": "rect", "x": 50, "y": 50, "width": 200, "height": 100, "label": "Frontend"},
   {"type": "rect", "x": 350, "y": 50, "width": 200, "height": 100, "label": "Backend"},
@@ -360,6 +382,67 @@ Shapes default to `"hachure"`. Set `fillStyle` on any shape:
 
 </details>
 
+## DSL Format
+
+claude-canvas includes a concise DSL (domain-specific language) as an alternative to JSON for `draw` and `ask` commands. Add the `--dsl` flag to use it.
+
+The DSL is **significantly more compact** than JSON — typically 3-5x fewer tokens. The included [Claude Code skill](#claude-code-skill) instructs Claude to **prefer DSL by default**, which reduces token usage and keeps conversations within context limits during complex visual sessions.
+
+The DSL also handles **automatic layout** via `row` and `stack` containers, eliminating manual coordinate math. And it supports **label-based arrow routing** — reference shapes by name instead of calculating pixel positions.
+
+### DSL vs JSON comparison
+
+```bash
+# DSL — 2 lines, auto-layout, no coordinates
+claude-canvas draw --dsl 'row gap=40 { box "Frontend" 200x100; box "Backend" 200x100 }
+arrow "Frontend" -> "Backend" "API"'
+
+# JSON — 5 lines, manual x/y for every shape
+claude-canvas draw '{"commands": [
+  {"type": "rect", "x": 50, "y": 50, "width": 200, "height": 100, "label": "Frontend"},
+  {"type": "rect", "x": 350, "y": 50, "width": 200, "height": 100, "label": "Backend"},
+  {"type": "arrow", "x1": 250, "y1": 100, "x2": 350, "y2": 100, "label": "API"}
+]}'
+```
+
+### Quick examples
+
+```bash
+# Shapes with layout
+claude-canvas draw --dsl 'row gap=40 {
+  box "Web App" 180x80 fill=solid color=#7198C9
+  box "API" 180x80 fill=solid color=#8AAD5A
+  box "DB" 180x80 fill=solid color=#D9925E
+}
+arrow "Web App" -> "API" "REST"
+arrow "API" -> "DB" "SQL"'
+
+# Flowchart with connectors
+claude-canvas draw --dsl '
+group #start { box "Start" 140x60 }
+group #process { box "Process" 140x60 }
+group #end { box "End" 140x60 }
+#start -> #process
+#process -> #end'
+
+# Visual Q&A
+claude-canvas ask --dsl 'ask {
+  question #theme single "Which color theme?" {
+    options "Blue Ocean" | "Forest Green" | "Sunset Purple"
+    row gap=40 {
+      circle "Blue" 50 fill=solid color=#7198C9
+      circle "Green" 50 fill=solid color=#8AAD5A
+      circle "Purple" 50 fill=solid color=#9B85B5
+    }
+  }
+  question #name text "What should we name this feature?"
+}'
+```
+
+For the full DSL syntax, shapes, layout containers, attributes, and more examples, see the [DSL Reference](src/skill/claude-canvas/DSL-REFERENCE.md).
+
+---
+
 ## Interactive Canvas
 
 The browser canvas is a full interactive drawing surface, not just a display. Users can draw alongside Claude's shapes in real-time.
@@ -424,6 +507,8 @@ Once installed, Claude Code will automatically use the canvas when it makes sens
 - Creating flowcharts to explain processes
 - Presenting visual options and asking for your preference via Q&A
 
+The skill instructs Claude to **prefer the DSL format** over JSON for all draw and ask commands. This reduces token usage significantly (3-5x fewer tokens), helping keep conversations within context limits during complex visual sessions. See the [DSL Reference](src/skill/claude-canvas/DSL-REFERENCE.md) for the full syntax.
+
 You don't need to explicitly tell Claude to use the canvas. The skill teaches Claude when the canvas is the right tool for the job.
 
 ---
@@ -439,9 +524,11 @@ All commands accept `-s, --session <id>`. You can omit it when only one session 
 | `claude-canvas list` | List all running sessions |
 | `claude-canvas stop -s <id>` | Stop a specific session |
 | `claude-canvas stop --all` | Stop all running sessions |
-| `claude-canvas ask '<json>'` | Send visual questions, block until answered |
-| `claude-canvas draw '<json>'` | Send draw commands to the canvas |
-| `claude-canvas draw --no-animate '<json>'` | Draw without animation |
+| `claude-canvas ask '<json>'` | Send visual questions (JSON), block until answered |
+| `claude-canvas ask --dsl '<dsl>'` | Send visual questions (DSL), block until answered |
+| `claude-canvas draw '<json>'` | Send draw commands (JSON) |
+| `claude-canvas draw --dsl '<dsl>'` | Send draw commands (DSL) |
+| `claude-canvas draw --no-animate '<json\|dsl>'` | Draw without animation |
 | `claude-canvas clear` | Clear all objects from the canvas |
 | `claude-canvas clear --layer claude` | Clear only Claude's objects |
 | `claude-canvas status '<text>'` | Update status badge in browser |
@@ -450,7 +537,7 @@ All commands accept `-s, --session <id>`. You can omit it when only one session 
 | `claude-canvas setup` | Install/update the Claude Code skill |
 | `claude-canvas update` | Update to the latest version |
 
-Both `ask` and `draw` accept `-` to read JSON from stdin.
+Both `ask` and `draw` accept `-` to read from stdin. Use `--dsl` for the compact DSL format (see [DSL Reference](src/skill/claude-canvas/DSL-REFERENCE.md)).
 
 ### Status Badge
 
@@ -535,7 +622,25 @@ npm run build && npx playwright test
 ## Examples
 
 <details>
-<summary><strong>Architecture Diagram</strong></summary>
+<summary><strong>Architecture Diagram (DSL)</strong></summary>
+
+```bash
+claude-canvas draw --dsl '
+text "System Architecture" size=28 weight=bold align=center
+row gap=40 {
+  box "Client App" 180x80
+  box "API Gateway" 180x80 fill=solid
+  box "Database" 180x80 fill=dots
+}
+arrow "Client App" -> "API Gateway" "REST"
+arrow "API Gateway" -> "Database" "SQL"
+'
+```
+
+</details>
+
+<details>
+<summary><strong>Architecture Diagram (JSON)</strong></summary>
 
 ```bash
 claude-canvas draw '{"commands": [
@@ -551,7 +656,24 @@ claude-canvas draw '{"commands": [
 </details>
 
 <details>
-<summary><strong>Wireframe Layout</strong></summary>
+<summary><strong>Wireframe Layout (DSL)</strong></summary>
+
+```bash
+claude-canvas draw --dsl '
+stack gap=10 {
+  box "Navigation" 500x60 fill=none
+  row gap=10 {
+    box "Sidebar" 150x300 fill=none
+    box "Main Content" 330x300 fill=none
+  }
+}
+'
+```
+
+</details>
+
+<details>
+<summary><strong>Wireframe Layout (JSON)</strong></summary>
 
 ```bash
 claude-canvas draw '{"commands": [
@@ -564,7 +686,22 @@ claude-canvas draw '{"commands": [
 </details>
 
 <details>
-<summary><strong>Flowchart with Connectors</strong></summary>
+<summary><strong>Flowchart with Connectors (DSL)</strong></summary>
+
+```bash
+claude-canvas draw --dsl '
+group #start { box "Start" 140x60 }
+group #process { box "Process" 140x60 }
+group #end { box "End" 140x60 }
+#start -> #process
+#process -> #end
+'
+```
+
+</details>
+
+<details>
+<summary><strong>Flowchart with Connectors (JSON)</strong></summary>
 
 ```bash
 claude-canvas draw '{"commands": [
@@ -588,7 +725,31 @@ claude-canvas draw '{"commands": [
 </details>
 
 <details>
-<summary><strong>Visual Decision Making (Q&A)</strong></summary>
+<summary><strong>Visual Decision Making — Q&A (DSL)</strong></summary>
+
+```bash
+claude-canvas ask --dsl '
+ask {
+  question #theme single "Which color theme should we use?" {
+    options "Blue Ocean" | "Forest Green" | "Sunset Purple"
+    row gap=40 {
+      circle "Blue" 50 fill=solid color=#7198C9
+      circle "Green" 50 fill=solid color=#8AAD5A
+      circle "Purple" 50 fill=solid color=#9B85B5
+    }
+  }
+  question #name text "What should we name this feature?"
+  question #features multi "Which features should we include?" {
+    options "Dark mode" | "Animations" | "Keyboard shortcuts" | "Mobile support"
+  }
+}
+'
+```
+
+</details>
+
+<details>
+<summary><strong>Visual Decision Making — Q&A (JSON)</strong></summary>
 
 ```bash
 claude-canvas ask '{"questions": [
