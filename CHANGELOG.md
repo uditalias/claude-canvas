@@ -1,3 +1,7 @@
+## 1.0.15 (2026-04-07)
+
+- fix: refine payload type casting in askAction and update SKILL.md with user notification requirements (1acd9cf)
+
 ## 1.0.14 (2026-04-07)
 
 - feat: add DSL format for canvas draw/ask commands (#2) (d1b75ad)
