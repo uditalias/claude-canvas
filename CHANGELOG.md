@@ -1,3 +1,7 @@
+## 1.0.14 (2026-04-07)
+
+- feat: add DSL format for canvas draw/ask commands (#2) (d1b75ad)
+
 ## 1.0.13 (2026-04-05)
 
 - Update package-lock.json to version 1.0.12 and add engine requirements (39a0432)
