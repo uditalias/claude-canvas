@@ -1,3 +1,7 @@
+## 1.0.16 (2026-04-19)
+
+- update: updated packages to fix vulnerabilities (d4d4d8d)
+
 ## 1.0.15 (2026-04-07)
 
 - fix: refine payload type casting in askAction and update SKILL.md with user notification requirements (1acd9cf)
