@@ -116,14 +116,20 @@ export function isAlive(pid: number): boolean {
   }
 }
 
-export function spawnServer(port: number): child_process.ChildProcess {
+export function buildSpawnEnv(port: number, host?: string): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env, PORT: String(port) };
+  if (host) env.CANVAS_HOST = host;
+  return env;
+}
+
+export function spawnServer(port: number, host?: string): child_process.ChildProcess {
   // When bundled: dist/bin/claude-canvas.js -> server at dist/server/index.js
   // When running via tsx from project root: src/server/process.ts -> src/server/index.ts (handled by tsx)
   const serverScript = path.resolve(__dirname, "../server/index.js");
   const child = child_process.fork(serverScript, [], {
     detached: true,
     stdio: "ignore",
-    env: { ...process.env, PORT: String(port) },
+    env: buildSpawnEnv(port, host),
   });
   child.unref();
   return child;

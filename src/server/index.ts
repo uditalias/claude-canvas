@@ -6,6 +6,7 @@ import { attachWebSocket } from "./websocket.js";
 import router from "./router.js";
 
 const port = parseInt(process.env.PORT || "7890", 10);
+const host = process.env.CANVAS_HOST || "127.0.0.1";
 
 const app = express();
 app.use(express.json());
@@ -31,8 +32,8 @@ app.get("*", (_req, res) => {
 const server = http.createServer(app);
 attachWebSocket(server);
 
-server.listen(port, "127.0.0.1", () => {
-  console.log(`claude-canvas server listening on http://127.0.0.1:${port}`);
+server.listen(port, host, () => {
+  console.log(`claude-canvas server listening on http://${host}:${port}`);
 });
 
 process.on("SIGTERM", () => {

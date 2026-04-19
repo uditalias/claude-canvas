@@ -82,4 +82,11 @@ describe("CLI", () => {
     const output = result.stdout + result.stderr;
     expect(output).toContain("No canvas sessions running");
   });
+
+  it("start --help documents the --host flag", () => {
+    const result = runCli("start --help");
+    const output = result.stdout + result.stderr;
+    expect(output).toContain("--host");
+    expect(output).toContain("CANVAS_HOST");
+  });
 });

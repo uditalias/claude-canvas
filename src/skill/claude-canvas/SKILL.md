@@ -138,6 +138,17 @@ claude-canvas stop --session a1b2c3d4   # stop one
 claude-canvas stop --all                 # stop all
 ```
 
+### Running inside Docker
+
+The server binds to `127.0.0.1` by default on a regular machine, but auto-switches to `0.0.0.0` when it detects it's running inside a container (via `/.dockerenv` or `/run/.containerenv`). In that case `claude-canvas start` works with `docker run -p 7890:7890` with no extra flags — just open `http://localhost:7890` on the host.
+
+To force a specific bind address, pass `--host` or set `CANVAS_HOST`:
+
+```bash
+claude-canvas start --host 0.0.0.0
+# or: CANVAS_HOST=0.0.0.0 claude-canvas start
+```
+
 ## Drawing Shapes
 
 Send draw commands using DSL format (use `--session` if multiple sessions are running):
