@@ -1,3 +1,7 @@
+## 1.0.17 (2026-04-19)
+
+- fix: support 0.0.0.0 bind host for Docker (#3) (#4) (d13f49a)
+
 ## 1.0.16 (2026-04-19)
 
 - update: updated packages to fix vulnerabilities (d4d4d8d)
