@@ -176,4 +176,23 @@ describe("process module tests", () => {
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
   });
+
+  describe("buildSpawnEnv", () => {
+    it("sets PORT and CANVAS_HOST when host is provided", () => {
+      const env = mod.buildSpawnEnv(7891, "0.0.0.0");
+      expect(env.PORT).toBe("7891");
+      expect(env.CANVAS_HOST).toBe("0.0.0.0");
+    });
+
+    it("sets PORT and omits CANVAS_HOST when no host is provided", () => {
+      const env = mod.buildSpawnEnv(7890);
+      expect(env.PORT).toBe("7890");
+      expect(env.CANVAS_HOST).toBeUndefined();
+    });
+
+    it("inherits the ambient process env (e.g. PATH)", () => {
+      const env = mod.buildSpawnEnv(7890, "127.0.0.1");
+      expect(env.PATH).toBe(process.env.PATH);
+    });
+  });
 });

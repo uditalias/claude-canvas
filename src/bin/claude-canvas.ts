@@ -20,6 +20,7 @@ program
   .command("start")
   .description("Start the canvas server and open the browser")
   .option("-p, --port <port>", "preferred port", "7890")
+  .option("--host <host>", "bind address (default: 127.0.0.1, or 0.0.0.0 when running inside a container). Also via CANVAS_HOST env var")
   .action(startAction);
 
 program
